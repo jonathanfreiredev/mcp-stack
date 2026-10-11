@@ -39,7 +39,7 @@ frontend/
 │   ├── safe-action.ts     # Public / protected action clients
 │   └── utils.ts           # cn() helper
 ├── proxy.ts               # Refreshes the Supabase session on every request
-├── __tests__/             # Vitest tests (unit + integration), mirroring the source
+├── __tests__/             # Vitest tests (unit, integration, components)
 ├── vitest.config.mts      # Vitest configuration
 ├── vitest.setup.ts        # Test setup (MSW lifecycle)
 └── package.json
@@ -111,8 +111,8 @@ Supabase is the source of truth: a provider only works if it is enabled in the d
 | `pnpm build`    | Production build           |
 | `pnpm start`    | Serve the production build |
 | `pnpm lint`     | Run ESLint                 |
-| `pnpm test`     | Run unit tests (watch)     |
-| `pnpm test:run` | Run unit tests once        |
+| `pnpm test`     | Run tests (watch)          |
+| `pnpm test:run` | Run tests once             |
 
 ## Testing
 
@@ -131,6 +131,9 @@ pnpm test:run   # single run (CI)
   with the backend mocked by **MSW** (`vitest.setup.ts` + `__tests__/msw/`). They
   opt into the Node environment with `// @vitest-environment node`; the default is
   `jsdom`.
+- **Component** tests render forms with React Testing Library and
+  `@testing-library/jest-dom` matchers, mocking the server action, `next/navigation`
+  and the toast manager.
 - Code that needs a real request (session cookies, `next/headers`, async Server
   Components) is left to E2E tests.
 
