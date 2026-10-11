@@ -42,6 +42,8 @@ frontend/
 ├── __tests__/             # Vitest tests (unit, integration, components)
 ├── vitest.config.mts      # Vitest configuration
 ├── vitest.setup.ts        # Test setup (MSW lifecycle)
+├── e2e/                   # Playwright end-to-end tests
+├── playwright.config.ts   # Playwright configuration
 └── package.json
 ```
 
@@ -74,13 +76,13 @@ Open http://localhost:3000. Both Supabase and the backend must be reachable for 
 
 ## Environment variables
 
-| Variable                        | Required | Description                                                          |
-| ------------------------------- | -------- | -------------------------------------------------------------------- |
-| `BACKEND_URL`                   | Yes      | Base URL of the FastAPI backend.                                     |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL (Project Settings > API).                       |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Supabase anon (publishable) key.                                     |
+| Variable                        | Required | Description                                                              |
+| ------------------------------- | -------- | ------------------------------------------------------------------------ |
+| `BACKEND_URL`                   | Yes      | Base URL of the FastAPI backend.                                         |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL (Project Settings > API).                           |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Supabase anon (publishable) key.                                         |
 | `NEXT_PUBLIC_AUTH_PROVIDERS`    | No       | Enabled login methods, comma-separated: `email,google`. Default `email`. |
-| `NODE_ENV`                      | No       | Set automatically by Next.js.                                        |
+| `NODE_ENV`                      | No       | Set automatically by Next.js.                                            |
 
 Variables are validated with `@t3-oss/env-nextjs` in `lib/env.js`. Set `SKIP_ENV_VALIDATION=1` to bypass validation (useful for Docker builds).
 
@@ -113,6 +115,7 @@ Supabase is the source of truth: a provider only works if it is enabled in the d
 | `pnpm lint`     | Run ESLint                 |
 | `pnpm test`     | Run tests (watch)          |
 | `pnpm test:run` | Run tests once             |
+| `pnpm test:e2e` | Run E2E tests (Playwright) |
 
 ## Testing
 
@@ -134,8 +137,12 @@ pnpm test:run   # single run (CI)
 - **Component** tests render forms with React Testing Library and
   `@testing-library/jest-dom` matchers, mocking the server action, `next/navigation`
   and the toast manager.
-- Code that needs a real request (session cookies, `next/headers`, async Server
-  Components) is left to E2E tests.
+- **E2E** tests use **Playwright** (`e2e/`, `playwright.config.ts`). They start the
+  dev server via `webServer` and cover public routes and the auth guard, so they
+  need no Supabase credentials or backend. Install the browser once with
+  `pnpm exec playwright install chromium`.
+- Authenticated flows (login, profile) need a real Supabase project and a seeded
+  user; they are left out of the default smoke.
 
 ## UI components
 
