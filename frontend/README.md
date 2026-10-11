@@ -39,6 +39,8 @@ frontend/
 │   ├── safe-action.ts     # Public / protected action clients
 │   └── utils.ts           # cn() helper
 ├── proxy.ts               # Refreshes the Supabase session on every request
+├── __tests__/             # Unit tests (Vitest), mirroring the source tree
+├── vitest.config.mts      # Vitest configuration
 └── package.json
 ```
 
@@ -102,12 +104,29 @@ Supabase is the source of truth: a provider only works if it is enabled in the d
 
 ## Scripts
 
-| Command      | Description                |
-| ------------ | -------------------------- |
-| `pnpm dev`   | Start the dev server       |
-| `pnpm build` | Production build           |
-| `pnpm start` | Serve the production build |
-| `pnpm lint`  | Run ESLint                 |
+| Command         | Description                |
+| --------------- | -------------------------- |
+| `pnpm dev`      | Start the dev server       |
+| `pnpm build`    | Production build           |
+| `pnpm start`    | Serve the production build |
+| `pnpm lint`     | Run ESLint                 |
+| `pnpm test`     | Run unit tests (watch)     |
+| `pnpm test:run` | Run unit tests once        |
+
+## Testing
+
+Unit tests use **Vitest** and **React Testing Library**, configured the way the
+[Next.js Vitest guide](https://nextjs.org/docs/app/guides/testing/vitest)
+recommends (see `vitest.config.mts`). Tests live in `__tests__/`, mirroring the
+source tree, and import modules through the `@/` alias.
+
+```bash
+pnpm test       # watch mode
+pnpm test:run   # single run (CI)
+```
+
+Scope: pure logic only — no network, no `next/headers`. Code that depends on the
+session, cookies or async Server Components is left to integration/E2E tests.
 
 ## UI components
 
