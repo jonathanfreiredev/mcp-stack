@@ -39,8 +39,9 @@ frontend/
 │   ├── safe-action.ts     # Public / protected action clients
 │   └── utils.ts           # cn() helper
 ├── proxy.ts               # Refreshes the Supabase session on every request
-├── __tests__/             # Unit tests (Vitest), mirroring the source tree
+├── __tests__/             # Vitest tests (unit + integration), mirroring the source
 ├── vitest.config.mts      # Vitest configuration
+├── vitest.setup.ts        # Test setup (MSW lifecycle)
 └── package.json
 ```
 
@@ -115,9 +116,9 @@ Supabase is the source of truth: a provider only works if it is enabled in the d
 
 ## Testing
 
-Unit tests use **Vitest** and **React Testing Library**, configured the way the
+Tests use **Vitest** and **React Testing Library**, configured the way the
 [Next.js Vitest guide](https://nextjs.org/docs/app/guides/testing/vitest)
-recommends (see `vitest.config.mts`). Tests live in `__tests__/`, mirroring the
+recommends (see `vitest.config.mts`). They live in `__tests__/`, mirroring the
 source tree, and import modules through the `@/` alias.
 
 ```bash
@@ -125,8 +126,13 @@ pnpm test       # watch mode
 pnpm test:run   # single run (CI)
 ```
 
-Scope: pure logic only — no network, no `next/headers`. Code that depends on the
-session, cookies or async Server Components is left to integration/E2E tests.
+- **Unit** tests cover pure logic (e.g. `lib/auth-providers.ts`, `lib/api-error.ts`).
+- **Integration** tests exercise the server layer (server actions, session helper)
+  with the backend mocked by **MSW** (`vitest.setup.ts` + `__tests__/msw/`). They
+  opt into the Node environment with `// @vitest-environment node`; the default is
+  `jsdom`.
+- Code that needs a real request (session cookies, `next/headers`, async Server
+  Components) is left to E2E tests.
 
 ## UI components
 

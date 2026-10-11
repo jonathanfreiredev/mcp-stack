@@ -2,6 +2,7 @@
 
 import { returnServerError } from "next-safe-action";
 
+import { backendErrorMessage } from "@/lib/api-error";
 import { env } from "@/lib/env";
 import { protectedProcedure } from "@/lib/safe-action";
 import { createClient } from "@/lib/supabase/server";
@@ -41,8 +42,10 @@ export const updateUserAction = protectedProcedure
 
       returnServerError({
         code: response.status,
-        message:
-          errorData.detail || "An error occurred while updating the profile.",
+        message: backendErrorMessage(
+          errorData.detail,
+          "An error occurred while updating the profile.",
+        ),
       });
     }
 

@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [tsconfigPaths(), react()],
   test: {
     environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    // Minimal values so `lib/env.js` validation passes under test.
+    env: {
+      BACKEND_URL: "http://backend.test",
+      NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
+    },
     // Restore `vi.stubEnv` values after each test.
     unstubEnvs: true,
   },
