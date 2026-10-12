@@ -17,5 +17,8 @@ class User(BaseModel):
     __tablename__ = "users"
 
     supabase_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), unique=True, index=True)
-    email: Mapped[str | None] = mapped_column(unique=True, index=True, default=None)
+    # Mirror of a Supabase-owned value, so it is indexed but not unique: Supabase
+    # enforces uniqueness per project, and a user can be removed out of band,
+    # which would otherwise leave an orphan row blocking a later signup.
+    email: Mapped[str | None] = mapped_column(index=True, default=None)
     full_name: Mapped[str | None] = mapped_column(default=None)

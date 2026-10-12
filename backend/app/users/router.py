@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_db_session
@@ -31,3 +31,18 @@ async def update_current_user(
         await session.refresh(user)
 
     return user
+
+
+@users_router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_async_db_session)],
+) -> None:
+    """Delete the current user's profile.
+
+    Hard delete: the row (and its mirrored email) is removed, so the same email
+    can be used to sign up again. The Supabase identity is removed separately by
+    the frontend, through the admin API.
+    """
+    await session.delete(user)
+    await session.commit()

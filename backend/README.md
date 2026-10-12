@@ -27,7 +27,7 @@ backend/
 │   │   ├── schemas.py         # UserRead / UserUpdate
 │   │   ├── service.py         # Just-in-time profile provisioning
 │   │   ├── dependencies.py    # TokenClaims -> local User
-│   │   └── router.py          # /users endpoints (me)
+│   │   └── router.py          # /users endpoints (read, update, delete me)
 │   ├── health/
 │   │   └── router.py          # /health liveness + /health/ready readiness
 │   ├── middleware/
@@ -35,6 +35,7 @@ backend/
 │   ├── db/
 │   │   ├── session.py         # Async engine + session factory
 │   │   └── models.py          # Declarative Base and BaseModel (id, timestamps)
+│   ├── api.py                 # Versioned API entrypoint (mounts /v1)
 │   ├── settings.py            # Settings loaded from .env
 │   ├── logging_config.py      # structlog setup (dev text / prod JSON)
 │   ├── pagination.py          # Offset pagination + sorting for list endpoints
@@ -87,6 +88,12 @@ SUPABASE_JWT_AUDIENCE=authenticated
 
 # Minimum log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 LOG_LEVEL=INFO
+
+# Environment: production (default) or development (enables SQL echo)
+ENV=development
+
+# Comma-separated browser origins allowed to call the API (CORS)
+CORS_ORIGINS=http://localhost:3000
 ```
 
 | Variable                | Required | Default                 | Description                                                          |
@@ -94,9 +101,10 @@ LOG_LEVEL=INFO
 | `DATABASE_URL`          | Yes      | –                       | Async connection string. Must use the `postgresql+asyncpg://` driver. |
 | `SUPABASE_URL`          | Yes      | –                       | Supabase project URL. The issuer (`<url>/auth/v1`) and JWKS (`<url>/auth/v1/.well-known/jwks.json`) are derived from it. |
 | `SUPABASE_JWT_AUDIENCE` | No       | `authenticated`         | Audience claim the access tokens carry.                              |
-| `ENV`                   | No       | `development`           | `development` enables SQL echo.                                      |
+| `ENV`                   | No       | `production`            | `development` enables SQL echo and text logs.                        |
 | `LOG_LEVEL`             | No       | `INFO`                  | Minimum level for the application logs.                              |
 | `FRONTEND_URL`          | No       | `http://localhost:3000` | Base URL of the frontend, used for redirects and documentation.      |
+| `CORS_ORIGINS`          | No       | `http://localhost:3000` | Comma-separated browser origins allowed to call the API.             |
 
 Settings are defined in `app/settings.py` and loaded from `backend/.env`.
 
@@ -198,16 +206,20 @@ When you add a new model, import it in `alembic/env.py` so it is included in aut
 
 Protected endpoints require an `Authorization: Bearer <supabase_access_token>` header.
 
-| Method | Path         | Auth | Description                                          |
-| ------ | ------------ | :--: | ---------------------------------------------------- |
-| GET    | `/health`       |      | Liveness: the process is up (no external checks)   |
-| GET    | `/health/ready` |      | Readiness: the database is reachable (`503` if not) |
-| GET    | `/users/me`  |  ✓   | Return the current profile (provisions it on first use) |
-| PATCH  | `/users/me`  |  ✓   | Update the profile name                              |
+| Method | Path            | Auth | Description                                             |
+| ------ | --------------- | :--: | ------------------------------------------------------- |
+| GET    | `/health`       |      | Liveness: the process is up (no external checks)        |
+| GET    | `/health/ready` |      | Readiness: the database is reachable (`503` if not)     |
+| GET    | `/v1/users/me`  |  ✓   | Return the current profile (provisions it on first use) |
+| PATCH  | `/v1/users/me`  |  ✓   | Update the profile name                                 |
+| DELETE | `/v1/users/me`  |  ✓   | Delete the profile (hard delete)                        |
+
+The application API is versioned under `/v1` (`app/api.py`); the health checks
+stay unversioned so a future `/v2` never breaks orchestrators.
 
 ### Request / response examples
 
-**PATCH `/users/me`** — the name is domain data owned by this service; the email lives in Supabase and is changed from the client.
+**PATCH `/v1/users/me`** — the name is domain data owned by this service; the email lives in Supabase and is changed from the client.
 
 ```json
 { "full_name": "Jane Smith" }
@@ -267,7 +279,8 @@ stable and fast at any depth. Pick **one mode per endpoint**, never both.
 
 - **Supabase Auth owns the user lifecycle**: signup, email verification, password reset, social login and sessions. This service stores no passwords and issues no tokens.
 - Access tokens are **asymmetric JWTs** (RS256 by default, ES256 also accepted). `app/auth/verifier.py` validates the signature against the project's **JWKS**, plus the `iss`, `aud` and `exp` claims, so tokens from another project — or expired ones — are rejected.
-- **Just-in-time provisioning**: the first time a valid token is seen, `app/users/service.py` creates the local profile keyed by `supabase_user_id` (the token's `sub`, a stable UUID). Later requests keep the mirrored email in sync. The profile's own `id` is what you should use for relations.
+- **Just-in-time provisioning**: the first time a valid token is seen, `app/users/service.py` creates the local profile keyed by `supabase_user_id` (the token's `sub`, a stable UUID). Later requests keep the mirrored email in sync. Concurrent first requests are safe: the insert is `ON CONFLICT DO NOTHING` on `supabase_user_id`, so a race never surfaces as a 500. The profile's own `id` is what you should use for relations.
+- **Deleting an account** is a hard delete of the local profile (`DELETE /v1/users/me`). The Supabase identity is removed separately by the frontend, through the admin API. Since the row is gone — and `email` is not unique — the same address can sign up again.
 - `app/auth/dependencies.py` resolves the bearer token into `TokenClaims`; `app/users/dependencies.py` resolves those claims into a local `User`. Inactive or unverified checks are handled by Supabase at authentication time, not here.
 
 ## Conventions
@@ -278,9 +291,12 @@ stable and fast at any depth. Pick **one mode per endpoint**, never both.
 
 ## CORS
 
-Allowed origins are configured in `app/main.py`. The default list includes `http://localhost:3000` for local development — update it before deploying.
+Allowed origins come from the `CORS_ORIGINS` setting (comma-separated), read in
+`app/main.py`. The default is `http://localhost:3000` for local development — set
+your real frontend domain(s) before deploying.
 
 ## Notes
 
 - `app/db/models.py` defines a shared `BaseModel` with a UUID primary key plus `created_at`, `updated_at`, and `deleted_at` columns for every table.
 - The `User` model is a **profile**: `supabase_user_id` (unique, links to Supabase), `email`, `full_name`. Add your own fields and relations on top of `id`.
+- `email` is **indexed but not unique**: it mirrors a Supabase-owned value, so Supabase is the source of truth. The identity key is `supabase_user_id`.

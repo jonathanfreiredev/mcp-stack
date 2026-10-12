@@ -6,7 +6,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-    env: str = "development"
+    # Defaults to production so a missing ENV never silently enables
+    # development-only behaviour (SQL echo, text logs). Set ENV=development locally.
+    env: str = "production"
     database_url: str
     # Base URL of the frontend, used to build the links sent to the user.
     frontend_url: str = "http://localhost:3000"
@@ -17,10 +19,18 @@ class Settings(BaseSettings):
     supabase_url: str
     # Audience claim Supabase access tokens carry.
     supabase_jwt_audience: str = "authenticated"
+    # Comma-separated list of browser origins allowed to call the API. Set the
+    # real frontend domain(s) in production.
+    cors_origins: str = "http://localhost:3000"
 
     @property
     def debug(self) -> bool:
         return self.env == "development"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Allowed browser origins, split from the comma-separated setting."""
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @property
     def supabase_issuer(self) -> str:

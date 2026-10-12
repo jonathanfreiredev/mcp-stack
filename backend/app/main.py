@@ -1,26 +1,27 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import api_v1_router
 from app.health.router import health_router
 from app.logging_config import configure_logging
 from app.middleware.request_id import RequestIdMiddleware
-from app.users.router import users_router
+from app.settings import settings
 
 # Structured logging for the whole process (app + uvicorn).
 configure_logging()
 
 app = FastAPI()
 
-# Unauthenticated probes for orchestrators and uptime monitors.
+# Unauthenticated probes for orchestrators and uptime monitors. Kept outside
+# the versioned API so a new version never breaks them.
 app.include_router(health_router)
-app.include_router(users_router)
+
+# Versioned application API.
+app.include_router(api_v1_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Next.js in dev
-        "https://mi-dominio.com",  # frontend in prod
-    ],
+    allow_origins=settings.cors_origin_list,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],

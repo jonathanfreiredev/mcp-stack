@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from dataclasses import dataclass
 from typing import Annotated
@@ -35,7 +36,9 @@ async def get_token_claims(
         raise _UNAUTHORIZED
 
     try:
-        claims = decode_access_token(credentials.credentials)
+        # Verifying is blocking (the JWKS lookup hits the network on a cache
+        # miss), so it runs in a worker thread instead of stalling the loop.
+        claims = await asyncio.to_thread(decode_access_token, credentials.credentials)
     except InvalidTokenError:
         raise _UNAUTHORIZED from None
 

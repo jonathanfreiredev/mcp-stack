@@ -28,6 +28,9 @@ def decode_access_token(token: str) -> dict:
     The signature is checked against the project's JWKS, and the issuer and
     audience are validated so tokens from another project (or with the wrong
     audience) are rejected. Anything that fails raises ``InvalidTokenError``.
+
+    This is blocking: the JWKS fetch does network I/O on a cache miss, so async
+    callers must run it off the event loop (see ``get_token_claims``).
     """
     try:
         signing_key = _get_jwk_client().get_signing_key_from_jwt(token)
