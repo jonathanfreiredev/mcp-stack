@@ -10,7 +10,8 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 
-from app.auth.dependencies import TokenClaims, get_token_claims
+from app.auth.claims import TokenClaims
+from app.auth.dependencies import get_token_claims
 from app.users.dependencies import get_current_user
 from app.users.models import User
 

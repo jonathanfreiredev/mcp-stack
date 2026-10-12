@@ -2,7 +2,7 @@ import uuid
 
 import pytest
 
-from app.auth.dependencies import TokenClaims
+from app.auth.claims import TokenClaims
 from app.users.service import _create_user
 from tests.auth_stub import mint_token
 from tests.helpers import auth_header

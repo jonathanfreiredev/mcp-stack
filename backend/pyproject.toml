@@ -9,6 +9,7 @@ dependencies = [
     "asyncpg>=0.31.0",
     "cryptography>=50.0.2",
     "fastapi[standard]>=0.141.1",
+    "fastmcp>=4.1.0",
     "pyjwt>=2.13.0",
     "sqlalchemy[asyncio]>=2.0.51",
     "structlog>=26.1.0",

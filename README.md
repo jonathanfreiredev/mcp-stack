@@ -45,6 +45,7 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 │   │   ├── auth/            # JWT verification + bearer dependency
 │   │   ├── users/           # Profile model, schemas, JIT provisioning, /users router
 │   │   ├── organizations/   # Tenant model (organization + membership), /organizations router
+│   │   ├── mcp/             # MCP server for AI agents (runs as its own service)
 │   │   ├── health/          # Liveness + readiness probes
 │   │   ├── middleware/      # Request id + structured access log
 │   │   ├── db/              # Async engine, session, base model
@@ -134,7 +135,7 @@ cp .env.example .env   # Postgres credentials for the stack
 docker compose up
 ```
 
-A one-shot `migrate` service runs `alembic upgrade head` before the API starts, so the schema is always up to date.
+A one-shot `migrate` service runs `alembic upgrade head` before the API starts, so the schema is always up to date. Like the API service it mounts the source, so a migration you just wrote is applied on the next `docker compose up` instead of waiting for a rebuild.
 
 Three files supply the environment, and each has one job:
 
@@ -144,6 +145,8 @@ Three files supply the environment, and each has one job:
 Because the containers build their `DATABASE_URL` from the root `.env`, **`backend/.env` must carry the same password** if you also want to run Alembic or pytest from the host. `POSTGRES_PASSWORD` is required on purpose — the compose file gives it no default — so a missing `.env` fails loudly instead of silently picking one.
 
 `backend/start-database.sh` is the alternative to the compose stack: it starts a standalone Postgres container matching `backend/.env`'s `DATABASE_URL`, which is what you want when running the API from the host. It and the compose service both bind port 5432, so run one or the other, not both.
+
+The stack also runs the **MCP server** on port 8001: the door AI agents such as Claude Code, Cursor or ChatGPT come through. It is a separate service that shares the domain and the token verification with the API — see the [MCP server](backend/README.md#mcp-server) section of the backend README.
 
 Deployment is not handled here: the frontend goes to Vercel (which builds it natively) and the backend to its own service. The `backend/Dockerfile` also has a production stage if you deploy it as a container.
 
@@ -180,6 +183,7 @@ Read by `docker-compose.yml` for variable substitution, so it is the source of t
 | `ENV`                   | No       | `production` (default) or `development`. Enables SQL echo when in development. |
 | `LOG_LEVEL`             | No       | Minimum level for the application logs (default `INFO`).                     |
 | `FRONTEND_URL`          | No       | Base URL of the frontend, used for redirects.                                |
+| `MCP_BASE_URL`          | No       | Public URL of the MCP server, published in the OAuth discovery document.     |
 | `CORS_ORIGINS`          | No       | Comma-separated browser origins allowed to call the API (default `http://localhost:3000`). |
 
 ### `frontend/.env`
@@ -213,6 +217,8 @@ All endpoints live on the FastAPI backend. Protected routes expect an `Authoriza
 | GET    | `/v1/organizations/{id}/members` |  ✓   | List the members of an organization                     |
 
 The application API is versioned under `/v1`. The health checks stay unversioned so a future `/v2` never breaks orchestrators.
+
+Agents do not use this API: they go through the **MCP server** on port 8001, a separate service that shares the same domain and authorization rules.
 
 Errors use FastAPI's default body (`{"detail": ...}`). Migrating to RFC 9457 ("Problem Details") is deliberately deferred until FastAPI supports it natively.
 

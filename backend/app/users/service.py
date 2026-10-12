@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import TokenClaims
+from app.auth.claims import TokenClaims
 from app.users.models import User
 
 

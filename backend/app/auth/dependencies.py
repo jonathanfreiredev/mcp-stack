@@ -1,11 +1,10 @@
 import asyncio
-import uuid
-from dataclasses import dataclass
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from app.auth.claims import InvalidClaims, TokenClaims, parse_claims
 from app.auth.verifier import InvalidTokenError, decode_access_token
 
 # auto_error=False so we control the response: a missing header is a 401, not a
@@ -19,18 +18,6 @@ _UNAUTHORIZED = HTTPException(
 )
 
 
-@dataclass(frozen=True)
-class TokenClaims:
-    """The subset of Supabase access-token claims the API relies on."""
-
-    subject: uuid.UUID
-    email: str | None
-    metadata: dict
-    # Set when the token was issued to an OAuth client (an AI agent), and unset
-    # for the application's own login. Each door accepts only its own tokens.
-    client_id: str | None = None
-
-
 async def get_token_claims(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
 ) -> TokenClaims:
@@ -41,22 +28,7 @@ async def get_token_claims(
     try:
         # Verifying is blocking (the JWKS lookup hits the network on a cache
         # miss), so it runs in a worker thread instead of stalling the loop.
-        claims = await asyncio.to_thread(decode_access_token, credentials.credentials)
-    except InvalidTokenError:
+        payload = await asyncio.to_thread(decode_access_token, credentials.credentials)
+        return parse_claims(payload)
+    except InvalidTokenError, InvalidClaims:
         raise _UNAUTHORIZED from None
-
-    subject = claims.get("sub")
-    if not isinstance(subject, str):
-        raise _UNAUTHORIZED
-
-    try:
-        subject_id = uuid.UUID(subject)
-    except ValueError:
-        raise _UNAUTHORIZED from None
-
-    return TokenClaims(
-        subject=subject_id,
-        email=claims.get("email"),
-        metadata=claims.get("user_metadata") or {},
-        client_id=claims.get("client_id"),
-    )

@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     supabase_url: str
     # Audience claim Supabase access tokens carry.
     supabase_jwt_audience: str = "authenticated"
+    # Public URL of the MCP server, as its clients reach it. Published as the
+    # protected resource in the OAuth discovery document, so it must be the URL
+    # clients use, not a container-internal hostname.
+    mcp_base_url: str = "http://localhost:8001"
     # Comma-separated list of browser origins allowed to call the API. Set the
     # real frontend domain(s) in production.
     cors_origins: str = "http://localhost:3000"

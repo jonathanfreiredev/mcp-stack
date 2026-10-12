@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 import structlog
 
-from app.auth.dependencies import TokenClaims
+from app.auth.claims import TokenClaims
 from app.users import dependencies
 
 pytestmark = pytest.mark.anyio

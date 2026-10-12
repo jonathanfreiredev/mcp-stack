@@ -47,6 +47,15 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?required, see .env.example}@postgres:5432/${POSTGRES_DB:-nextjs-fastapi}
       ENV: development
       FRONTEND_URL: http://localhost:3000
+    # Mount the source, but keep the image's Linux virtualenv untouched. The
+    # one-shot service needs it as much as the API does: without the mount it
+    # runs the migrations baked into the image at build time, so a new migration
+    # is silently skipped ("already up to date") while the service exits 0.
+    volumes: &backend-mounts
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/alembic.ini:/app/alembic.ini
+      - ./backend/pyproject.toml:/app/pyproject.toml
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,12 +68,7 @@ services:
     env_file: *backend-env-file
     environment:
       <<: *backend-env
-    volumes:
-      # Mount the source, but keep the image's Linux virtualenv untouched.
-      - ./backend/app:/app/app
-      - ./backend/alembic:/app/alembic
-      - ./backend/alembic.ini:/app/alembic.ini
-      - ./backend/pyproject.toml:/app/pyproject.toml
+    volumes: *backend-mounts
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -78,6 +82,37 @@ services:
           "python",
           "-c",
           "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status == 200 else 1)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # The MCP server: a second door into the same domain, this one for AI agents.
+  # It runs as its own service so agent traffic, scaling and restarts stay out of
+  # the API's way; the two share the code, the domain and the token verification.
+  mcp:
+    build:
+      context: ./backend
+      target: dev
+    command: ["uvicorn", "app.mcp.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+    env_file: *backend-env-file
+    environment:
+      <<: *backend-env
+    volumes: *backend-mounts
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8001:8001"
+    healthcheck:
+      # The slim image has no curl, so probe with the bundled Python.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://localhost:8001/health').status == 200 else 1)",
         ]
       interval: 10s
       timeout: 5s

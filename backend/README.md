@@ -21,6 +21,7 @@ backend/
 ├── app/
 │   ├── auth/
 │   │   ├── verifier.py        # Verify a Supabase JWT against the project's JWKS
+│   │   ├── claims.py          # TokenClaims + parsing, shared by both doors
 │   │   └── dependencies.py    # Bearer token -> TokenClaims
 │   ├── users/
 │   │   ├── models.py          # User (profile) ORM model
@@ -37,6 +38,11 @@ backend/
 │   │   ├── service.py         # Create with an owner, list, resolve memberships
 │   │   ├── dependencies.py    # Path organization -> the caller's membership
 │   │   └── router.py          # /organizations endpoints
+│   ├── mcp/
+│   │   ├── server.py          # FastMCP app, Supabase auth and /health
+│   │   ├── auth.py            # Verifies MCP tokens with app.auth.verifier
+│   │   ├── tools.py           # The tools, and their registration
+│   │   └── main.py            # ASGI entrypoint (uvicorn app.mcp.main:app)
 │   ├── health/
 │   │   └── router.py          # /health liveness + /health/ready readiness
 │   ├── middleware/
@@ -113,6 +119,7 @@ CORS_ORIGINS=http://localhost:3000
 | `ENV`                   | No       | `production`            | `development` enables SQL echo and text logs.                        |
 | `LOG_LEVEL`             | No       | `INFO`                  | Minimum level for the application logs.                              |
 | `FRONTEND_URL`          | No       | `http://localhost:3000` | Base URL of the frontend, used for redirects and documentation.      |
+| `MCP_BASE_URL`          | No       | `http://localhost:8001` | Public URL of the MCP server. Published in the OAuth discovery document, so it must be the URL clients use. |
 | `CORS_ORIGINS`          | No       | `http://localhost:3000` | Comma-separated browser origins allowed to call the API.             |
 
 Settings are defined in `app/settings.py` and loaded from `backend/.env`.
@@ -377,6 +384,50 @@ is where the API turns them away with a **403 rather than a 401**: the token is
 valid and re-authenticating would produce the same one, so a client should not
 retry. This is what keeps an agent from reaching the API directly and skipping the
 tool policies.
+
+## MCP server
+
+`app/mcp/` is a second door into the same domain, built with
+[FastMCP](https://gofastmcp.com). AI agents — Claude Code, Cursor, ChatGPT —
+authenticate as your users through Supabase Auth's OAuth 2.1 server and call the
+tools it exposes.
+
+It is a **separate service**, not a route on the API: `docker-compose.yml` has an
+`mcp` service whose entrypoint is `app/mcp/main.py`. It shares the domain layer
+with the API — so a tool cannot do anything the API would not allow — and it
+verifies tokens with the same `app/auth/verifier.py`.
+
+| Endpoint                                        | Description                           |
+| ----------------------------------------------- | ------------------------------------- |
+| `POST /mcp`                                     | The MCP endpoint (Streamable HTTP)    |
+| `GET /.well-known/oauth-protected-resource/mcp` | Protected resource metadata (RFC 9728) |
+| `GET /health`                                   | Liveness probe (never authenticated)  |
+
+A client needs nothing but the URL: it reads the metadata from the 401 challenge,
+registers itself with Supabase (dynamic client registration) and the user approves
+the access once. Point Claude Code at `http://localhost:8001/mcp`.
+
+`stateless_http` is on (`app/mcp/main.py`) because MCP clients do not forward
+cookies, so a load balancer cannot pin them to the instance holding their session.
+Without it the server only works as a single instance.
+
+### Adding a tool
+
+A tool is a thin adapter: take the caller from the token, call a domain service,
+return a typed result. Business rules never live in a tool. `app/mcp/tools.py`
+ships one (`whoami`) as the pattern to copy; register new ones in
+`register_tools`. Registration is explicit rather than a decorator, so the server
+module owns the list of tools and the tools hold no reference back to it.
+
+### The one thing this door cannot check
+
+Supabase does not support **RFC 8707 resource indicators**, so an access token is
+not bound to a specific resource: one minted for the MCP server is also accepted
+by the API, and the reverse. The API compensates by accepting only first-party
+tokens (`app/authz/dependencies.py`), and FastMCP's own warning about the missing
+audience check does not appear because we hand it our verifier (`app/mcp/auth.py`)
+instead of letting it build one. It is a trade-off we accepted knowingly, not
+something we overlooked.
 
 ## Conventions
 

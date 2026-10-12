@@ -4,7 +4,8 @@ import structlog
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.dependencies import TokenClaims, get_token_claims
+from app.auth.claims import TokenClaims
+from app.auth.dependencies import get_token_claims
 from app.db.session import get_async_db_session
 from app.users.models import User
 from app.users.service import get_or_create_user
