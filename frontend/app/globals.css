@@ -49,6 +49,8 @@
 }
 
 :root {
+  /* Height of the fixed header; content below it offsets by this much. */
+  --header-height: 6rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

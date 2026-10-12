@@ -20,8 +20,9 @@ import { useRouter } from "next/navigation";
 
 export const ChangePasswordForm = ({
   className,
+  onSuccess,
   ...props
-}: React.ComponentProps<"div">) => {
+}: React.ComponentProps<"div"> & { onSuccess?: () => void }) => {
   const router = useRouter();
 
   const form = useForm<z.infer<typeof updateUserPasswordSchema>>({
@@ -66,6 +67,7 @@ export const ChangePasswordForm = ({
 
     form.reset();
     router.refresh();
+    onSuccess?.();
   }
 
   return (

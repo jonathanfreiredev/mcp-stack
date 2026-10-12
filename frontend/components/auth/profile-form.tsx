@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { toast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { updateUserAction } from "@/server/users/users.actions";
@@ -34,7 +35,7 @@ import {
 } from "../ui/field";
 import { Input } from "../ui/input";
 import { ChangePasswordForm } from "./change-password-form";
-import { DeleteAccountForm } from "./delete-account-form";
+import { DeleteAccountCard } from "./delete-account-card";
 
 export const ProfileForm = ({
   user,
@@ -42,6 +43,8 @@ export const ProfileForm = ({
   ...props
 }: React.ComponentProps<"div"> & { user: { name: string; email: string } }) => {
   const router = useRouter();
+
+  const [isChangePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const form = useForm<z.infer<typeof updateUserSchema>>({
     resolver: zodResolver(updateUserSchema),
@@ -150,8 +153,11 @@ export const ProfileForm = ({
           </form>
         </CardContent>
 
-        <CardFooter className="flex justify-end gap-2">
-          <Dialog>
+        <CardFooter className="flex justify-end">
+          <Dialog
+            open={isChangePasswordOpen}
+            onOpenChange={setChangePasswordOpen}
+          >
             <DialogTrigger
               render={
                 <Button variant="link" disabled={form.formState.isSubmitting}>
@@ -167,36 +173,15 @@ export const ProfileForm = ({
                 </DialogDescription>
               </DialogHeader>
 
-              <ChangePasswordForm />
-            </DialogContent>
-          </Dialog>
-
-          <Dialog>
-            <DialogTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  disabled={form.formState.isSubmitting}
-                >
-                  Delete account
-                </Button>
-              }
-            />
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Delete account</DialogTitle>
-                <DialogDescription>
-                  This permanently deletes your account and profile, and cannot
-                  be undone. Enter your password to confirm.
-                </DialogDescription>
-              </DialogHeader>
-
-              <DeleteAccountForm />
+              <ChangePasswordForm
+                onSuccess={() => setChangePasswordOpen(false)}
+              />
             </DialogContent>
           </Dialog>
         </CardFooter>
       </Card>
+
+      <DeleteAccountCard />
     </div>
   );
 };

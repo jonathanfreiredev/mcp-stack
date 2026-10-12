@@ -10,7 +10,13 @@ import { cn } from "@/lib/utils";
 import { deleteUserAction } from "@/server/users/users.actions";
 import { deleteUserSchema } from "@/server/users/users.schemas";
 import { Button } from "../ui/button";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldSet } from "../ui/field";
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldSet,
+} from "../ui/field";
 import { Input } from "../ui/input";
 
 /**
@@ -19,8 +25,9 @@ import { Input } from "../ui/input";
  */
 export const DeleteAccountForm = ({
   className,
+  onSuccess,
   ...props
-}: React.ComponentProps<"div">) => {
+}: React.ComponentProps<"div"> & { onSuccess?: () => void }) => {
   const router = useRouter();
 
   const form = useForm<z.infer<typeof deleteUserSchema>>({
@@ -47,6 +54,8 @@ export const DeleteAccountForm = ({
       description: "Your account and profile have been removed.",
       type: "success",
     });
+
+    onSuccess?.();
 
     // The session is gone, so leave the protected area.
     router.replace("/");

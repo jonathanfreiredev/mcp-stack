@@ -12,7 +12,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center">
+    <div className="flex w-full flex-col items-center px-4 py-8">
       <ProfileForm
         user={{
           name: session?.user.name || "",

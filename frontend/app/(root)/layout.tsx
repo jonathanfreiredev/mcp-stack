@@ -1,5 +1,6 @@
 import { Header } from "@/components/header";
 import { VerificationBanner } from "@/components/auth/verification-banner";
+import { Breadcrumbs } from "@/components/breadcrumbs";
 import { getSession } from "@/server/auth/auth.lib";
 
 export default async function Layout({
@@ -13,7 +14,10 @@ export default async function Layout({
     <>
       <Header session={session} />
       {session && !session.user.isVerified ? <VerificationBanner /> : null}
-      <main className="relative flex flex-col">{children}</main>
+      <main className="relative flex flex-col">
+        <Breadcrumbs />
+        {children}
+      </main>
     </>
   );
 }
