@@ -20,8 +20,9 @@ jobs:
     env:
       # Dummy values so the build passes env validation.
       BACKEND_URL: http://localhost:8000
+      SUPABASE_SECRET_KEY: test-secret-key
       NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-publishable-key
       NEXT_PUBLIC_AUTH_PROVIDERS: email
 
     steps:
@@ -46,5 +47,14 @@ jobs:
       - name: Type check
         run: pnpm exec tsc --noEmit
 
+      - name: Run unit tests
+        run: pnpm test:run
+
       - name: Build
         run: pnpm build
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run end-to-end tests
+        run: pnpm test:e2e

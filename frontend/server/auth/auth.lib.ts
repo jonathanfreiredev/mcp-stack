@@ -43,7 +43,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
 
   let name = (claims.user_metadata?.full_name as string | undefined) ?? "";
   if (token) {
-    const response = await fetch(`${env.BACKEND_URL}/users/me`, {
+    const response = await fetch(`${env.BACKEND_URL}/v1/users/me`, {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });

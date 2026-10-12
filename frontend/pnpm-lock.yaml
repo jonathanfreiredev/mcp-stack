@@ -41,12 +41,6 @@ importers:
       next-safe-action:
         specifier: ^8.6.0
         version: 8.6.0(next@16.2.12(@babel/core@7.29.7)(@playwright/test@1.64.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      prettier:
-        specifier: ^3.9.6
-        version: 3.9.6
-      prettier-plugin-tailwindcss:
-        specifier: ^0.8.1
-        version: 0.8.1(prettier@3.9.6)
       react:
         specifier: 19.2.4
         version: 19.2.4
@@ -59,9 +53,6 @@ importers:
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
-      shadcn:
-        specifier: ^4.16.1
-        version: 4.16.1(typescript@5.9.3)
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -111,6 +102,15 @@ importers:
       msw:
         specifier: ^2.15.0
         version: 2.15.0(@types/node@20.19.43)(typescript@5.9.3)
+      prettier:
+        specifier: ^3.9.6
+        version: 3.9.6
+      prettier-plugin-tailwindcss:
+        specifier: ^0.8.1
+        version: 0.8.1(prettier@3.9.6)
+      shadcn:
+        specifier: ^4.16.1
+        version: 4.16.1(typescript@5.9.3)
       tailwindcss:
         specifier: ^4
         version: 4.3.3

@@ -23,7 +23,10 @@ frontend/
 │   ├── auth/              # login, signup, forgot-password, reset-password, verify-email
 │   │   └── confirm/       # Route handler for email links and the OAuth callback
 │   ├── profile/           # Protected profile page
-│   ├── layout.tsx         # Root layout (fonts, Toaster)
+│   ├── layout.tsx         # Root layout (fonts, metadata, Toaster)
+│   ├── error.tsx          # Route error boundary
+│   ├── not-found.tsx      # 404 page
+│   ├── loading.tsx        # Route loading UI
 │   └── globals.css        # Tailwind + theme tokens
 ├── components/
 │   ├── auth/              # Auth, profile, change-password and verification components
@@ -36,6 +39,7 @@ frontend/
 │   ├── env.js             # Validated env vars
 │   ├── auth-providers.ts  # Which login methods are enabled
 │   ├── supabase/server.ts # Supabase server client (cookies)
+│   ├── supabase/admin.ts  # Supabase admin client (service role; deletes users)
 │   ├── safe-action.ts     # Public / protected action clients
 │   └── utils.ts           # cn() helper
 ├── proxy.ts               # Refreshes the Supabase session on every request
@@ -76,13 +80,14 @@ Open http://localhost:3000. Both Supabase and the backend must be reachable for 
 
 ## Environment variables
 
-| Variable                        | Required | Description                                                              |
-| ------------------------------- | -------- | ------------------------------------------------------------------------ |
-| `BACKEND_URL`                   | Yes      | Base URL of the FastAPI backend.                                         |
-| `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL (Project Settings > API).                           |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Supabase anon (publishable) key.                                         |
-| `NEXT_PUBLIC_AUTH_PROVIDERS`    | No       | Enabled login methods, comma-separated: `email,google`. Default `email`. |
-| `NODE_ENV`                      | No       | Set automatically by Next.js.                                            |
+| Variable                               | Required | Description                                                                                |
+| -------------------------------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `BACKEND_URL`                          | Yes      | Base URL of the FastAPI backend.                                                           |
+| `NEXT_PUBLIC_SUPABASE_URL`             | Yes      | Supabase project URL (Project Settings > API).                                             |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes      | Supabase publishable key (replaces the legacy anon key).                                   |
+| `SUPABASE_SECRET_KEY`                  | Yes      | Supabase secret key. **Server-only**; the admin client uses it to delete a user's account. |
+| `NEXT_PUBLIC_AUTH_PROVIDERS`           | No       | Enabled login methods, comma-separated: `email,google`. Default `email`.                   |
+| `NODE_ENV`                             | No       | Set automatically by Next.js.                                                              |
 
 Variables are validated with `@t3-oss/env-nextjs` in `lib/env.js`. Set `SKIP_ENV_VALIDATION=1` to bypass validation (useful for Docker builds).
 
@@ -103,6 +108,7 @@ Supabase is the source of truth: a provider only works if it is enabled in the d
 - **Server actions** — `server/auth/auth.actions.ts` and `server/users/users.actions.ts` call Supabase (`signUp`, `signInWithPassword`, `signOut`, `signInWithOAuth`, `resetPasswordForEmail`, `updateUser`, `resend`) and the backend. Client components invoke them through `next-safe-action`.
 - **Auth flows** — `/auth/login`, `/auth/signup`, `/auth/forgot-password`, `/auth/reset-password` and `/auth/verify-email`. Supabase sends the emails; `app/auth/confirm/route.ts` handles the links (email confirmation, password recovery) and the OAuth callback, exchanges the credential for a session and redirects.
 - **Protected actions** — `protectedProcedure` in `lib/safe-action.ts` requires a valid session and exposes the token and user to the action. The token is forwarded to the backend in the `Authorization` header.
+- **Account deletion** — `deleteUserAction` asks for the password again, then hard-deletes the profile through the backend and the Supabase identity through the admin client (`lib/supabase/admin.ts`, service role key). It then signs out and leaves the protected area.
 - **Guards** — `app/auth/layout.tsx` redirects authenticated users away from the auth pages, while `app/profile/page.tsx` redirects unauthenticated users to `/auth/login`. The root layout shows a resend-verification banner while the email is unverified.
 
 ## Scripts

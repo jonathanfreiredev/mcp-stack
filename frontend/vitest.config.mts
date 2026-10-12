@@ -12,8 +12,9 @@ export default defineConfig({
     // Minimal values so `lib/env.js` validation passes under test.
     env: {
       BACKEND_URL: "http://backend.test",
+      SUPABASE_SECRET_KEY: "test-secret-key",
       NEXT_PUBLIC_SUPABASE_URL: "https://test.supabase.co",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",
     },
     // Restore `vi.stubEnv` values after each test.
     unstubEnvs: true,

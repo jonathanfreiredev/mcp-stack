@@ -50,7 +50,7 @@ describe("getSession", () => {
       session: { access_token: "token", expires_at: 1_700_000_000 },
     });
     server.use(
-      http.get(`${BACKEND_URL}/users/me`, () =>
+      http.get(`${BACKEND_URL}/v1/users/me`, () =>
         HttpResponse.json({ full_name: "From backend" }),
       ),
     );
@@ -79,7 +79,7 @@ describe("getSession", () => {
       session: { access_token: "token", expires_at: 1_700_000_000 },
     });
     server.use(
-      http.get(`${BACKEND_URL}/users/me`, () =>
+      http.get(`${BACKEND_URL}/v1/users/me`, () =>
         HttpResponse.json({ detail: "boom" }, { status: 500 }),
       ),
     );
@@ -99,7 +99,7 @@ describe("getSession", () => {
       session: { access_token: "token", expires_at: 1_700_000_000 },
     });
     server.use(
-      http.get(`${BACKEND_URL}/users/me`, () =>
+      http.get(`${BACKEND_URL}/v1/users/me`, () =>
         HttpResponse.json({ full_name: "Name" }),
       ),
     );

@@ -7,8 +7,14 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
-    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
     BACKEND_URL: z.string(),
+    // Supabase secret key (sb_secret_..., replaces the legacy service_role key).
+    // Used by the admin client to delete a user. Server-only: it bypasses RLS
+    // and must never reach the browser.
+    SUPABASE_SECRET_KEY: z.string().min(1),
   },
 
   /**
@@ -18,7 +24,8 @@ export const env = createEnv({
    */
   client: {
     NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+    // Supabase publishable key (sb_publishable_..., replaces the legacy anon key).
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(1),
     // Comma-separated list of enabled login methods: "email", "google".
     NEXT_PUBLIC_AUTH_PROVIDERS: z.string().default("email"),
   },
@@ -30,8 +37,10 @@ export const env = createEnv({
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
     BACKEND_URL: process.env.BACKEND_URL,
+    SUPABASE_SECRET_KEY: process.env.SUPABASE_SECRET_KEY,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     NEXT_PUBLIC_AUTH_PROVIDERS: process.env.NEXT_PUBLIC_AUTH_PROVIDERS,
   },
   /**

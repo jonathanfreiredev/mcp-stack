@@ -34,6 +34,7 @@ import {
 } from "../ui/field";
 import { Input } from "../ui/input";
 import { ChangePasswordForm } from "./change-password-form";
+import { DeleteAccountForm } from "./delete-account-form";
 
 export const ProfileForm = ({
   user,
@@ -149,7 +150,7 @@ export const ProfileForm = ({
           </form>
         </CardContent>
 
-        <CardFooter className="flex justify-end">
+        <CardFooter className="flex justify-end gap-2">
           <Dialog>
             <DialogTrigger
               render={
@@ -167,6 +168,31 @@ export const ProfileForm = ({
               </DialogHeader>
 
               <ChangePasswordForm />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog>
+            <DialogTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                  disabled={form.formState.isSubmitting}
+                >
+                  Delete account
+                </Button>
+              }
+            />
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Delete account</DialogTitle>
+                <DialogDescription>
+                  This permanently deletes your account and profile, and cannot
+                  be undone. Enter your password to confirm.
+                </DialogDescription>
+              </DialogHeader>
+
+              <DeleteAccountForm />
             </DialogContent>
           </Dialog>
         </CardFooter>

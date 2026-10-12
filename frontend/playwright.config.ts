@@ -22,8 +22,9 @@ export default defineConfig({
     // tests only visit public routes, which never call Supabase (no session).
     env: {
       BACKEND_URL: "http://localhost:8000",
+      SUPABASE_SECRET_KEY: "test-secret-key",
       NEXT_PUBLIC_SUPABASE_URL: "http://localhost:54321",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "test-publishable-key",
     },
   },
 });

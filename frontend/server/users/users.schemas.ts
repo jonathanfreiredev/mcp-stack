@@ -16,3 +16,7 @@ export const updateUserPasswordSchema = z.object({
     message: "Confirm new password must be at least 8 characters long",
   }),
 });
+
+export const deleteUserSchema = z.object({
+  password: z.string().min(1, { message: "Password is required" }),
+});

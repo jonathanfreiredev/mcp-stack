@@ -17,14 +17,14 @@ Authentication is delegated to [**Supabase Auth**](https://supabase.com/docs/gui
 ## Architecture
 
 ```
-┌──────────────────────────┐        ┌──────────────────────────┐        ┌──────────────┐
-│  Browser                 │        │  Next.js (server)        │        │  FastAPI     │
-│                          │        │                          │        │              │
-│  React components  ──────┼───────▶│  server actions  ────────┼───────▶│  /users/me   │
-│  (client)                │        │  (@supabase/ssr)         │        │  verify JWT  │
-│                          │◀───────┼──  Supabase session      │◀───────┼──  JWKS      │
-│  session via getSession  │        │  cookies                 │        │  SQLAlchemy  │
-└──────────────────────────┘        └────────────┬─────────────┘        └──────┬───────┘
+┌──────────────────────────┐        ┌──────────────────────────┐        ┌───────────────┐
+│  Browser                 │        │  Next.js (server)        │        │  FastAPI      │
+│                          │        │                          │        │               │
+│  React components  ──────┼───────▶│  server actions  ────────┼───────▶│  /v1/users/me │
+│  (client)                │        │  (@supabase/ssr)         │        │  verify JWT   │
+│                          │◀───────┼──  Supabase session      │◀───────┼──  JWKS       │
+│  session via getSession  │        │  cookies                 │        │  SQLAlchemy   │
+└──────────────────────────┘        └────────────┬─────────────┘        └──────┬────────┘
                                                   │                             │
                                        ┌──────────▼──────────┐         ┌────────▼────────┐
                                        │  Supabase Auth       │         │  PostgreSQL     │
@@ -45,9 +45,10 @@ The browser authenticates against Supabase through Next.js server actions; the s
 │   │   ├── health/          # Liveness + readiness probes
 │   │   ├── middleware/      # Request id + structured access log
 │   │   ├── db/              # Async engine, session, base model
+│   │   ├── api.py           # Versioned API entrypoint (mounts /v1)
 │   │   ├── settings.py      # Pydantic settings (reads .env)
 │   │   ├── logging_config.py # structlog setup (text in dev, JSON in prod)
-│   │   └── main.py          # App entrypoint + CORS
+│   │   └── main.py          # App entrypoint, CORS, routers
 │   ├── alembic/             # Database migrations
 │   ├── tests/               # Unit + integration tests
 │   ├── Dockerfile           # Dev image (+ production stage)
@@ -151,9 +152,10 @@ On **Render** or **Railway**, set the health check path to `/health`. Locally, `
 | `DATABASE_URL`          | Yes      | Async PostgreSQL URL, e.g. `postgresql+asyncpg://postgres:password@localhost:5432/app`. |
 | `SUPABASE_URL`          | Yes      | Supabase project URL. Used to derive the issuer and the JWKS endpoint.       |
 | `SUPABASE_JWT_AUDIENCE` | No       | Audience claim on access tokens (default `authenticated`).                   |
-| `ENV`                   | No       | `development` (default) or `production`. Enables SQL echo when in development. |
+| `ENV`                   | No       | `production` (default) or `development`. Enables SQL echo when in development. |
 | `LOG_LEVEL`             | No       | Minimum level for the application logs (default `INFO`).                     |
 | `FRONTEND_URL`          | No       | Base URL of the frontend, used for redirects.                                |
+| `CORS_ORIGINS`          | No       | Comma-separated browser origins allowed to call the API (default `http://localhost:3000`). |
 
 ### `frontend/.env`
 
@@ -161,22 +163,28 @@ On **Render** or **Railway**, set the health check path to `/health`. Locally, `
 | ------------------------------- | -------- | ------------------------------------------------------- |
 | `BACKEND_URL`                   | Yes      | Base URL of the FastAPI backend, e.g. `http://localhost:8000`. |
 | `NEXT_PUBLIC_SUPABASE_URL`      | Yes      | Supabase project URL.                                   |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes      | Supabase anon (publishable) key.                        |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes      | Supabase publishable key (replaces the legacy anon key). |
+| `SUPABASE_SECRET_KEY`                  | Yes      | Supabase secret key. **Server-only**; deletes a user's account. |
 | `NEXT_PUBLIC_AUTH_PROVIDERS`    | No       | Enabled login methods (`email,google`). Default `email`. |
 | `NODE_ENV`                      | No       | Set automatically by Next.js.                           |
 
-Environment variables in the frontend are validated at startup with `@t3-oss/env-nextjs` (`lib/env.js`).
+Environment variables in the frontend are validated at startup with `@t3-oss/env-nextjs` (`lib/env.js`). The publishable and secret keys are Supabase's current keys; they replace the legacy `anon` and `service_role` keys (deprecated at the end of 2026).
 
 ## API reference
 
 All endpoints live on the FastAPI backend. Protected routes expect an `Authorization: Bearer <supabase_access_token>` header.
 
-| Method | Path        | Auth | Description                                               |
-| ------ | ----------- | :--: | --------------------------------------------------------- |
-| GET    | `/health`       |      | Liveness: the process is up (no external checks)      |
-| GET    | `/health/ready` |      | Readiness: the database is reachable (`503` if not)   |
-| GET    | `/users/me` |  ✓   | Return the current profile (provisions it on first use)   |
-| PATCH  | `/users/me` |  ✓   | Update the profile name                                   |
+| Method | Path            | Auth | Description                                             |
+| ------ | --------------- | :--: | ------------------------------------------------------- |
+| GET    | `/health`       |      | Liveness: the process is up (no external checks)        |
+| GET    | `/health/ready` |      | Readiness: the database is reachable (`503` if not)     |
+| GET    | `/v1/users/me`  |  ✓   | Return the current profile (provisions it on first use) |
+| PATCH  | `/v1/users/me`  |  ✓   | Update the profile name                                 |
+| DELETE | `/v1/users/me`  |  ✓   | Delete the profile (hard delete)                        |
+
+The application API is versioned under `/v1`. The health checks stay unversioned so a future `/v2` never breaks orchestrators.
+
+Errors use FastAPI's default body (`{"detail": ...}`). Migrating to RFC 9457 ("Problem Details") is deliberately deferred until FastAPI supports it natively.
 
 Authentication (signup, login, verification, reset) is handled by **Supabase Auth**, not this API.
 
@@ -188,6 +196,7 @@ Authentication (signup, login, verification, reset) is handled by **Supabase Aut
 4. Protected server actions use `protectedProcedure`, which rejects the request when there is no valid session and forwards the Supabase access token to the backend.
 5. The backend **verifies** the token against Supabase's **JWKS** (`iss`, `aud`, `exp`) and **provisions a local profile** keyed by the token's `sub` the first time it sees the user.
 6. Supabase sends verification and password-reset emails; `frontend/app/auth/confirm/route.ts` handles the links and the OAuth callback.
+7. **Account deletion** is a hard delete on both sides: the backend removes the local profile and the frontend then deletes the Supabase identity through the admin API. The email is freed, so the same address can sign up again.
 
 ## Common commands
 
@@ -219,7 +228,7 @@ Authentication (signup, login, verification, reset) is handled by **Supabase Aut
 GitHub Actions runs two path-filtered workflows, so a change in one app does not trigger the other:
 
 - `.github/workflows/backend.yml` — lints, checks formatting, applies migrations and runs the tests against a PostgreSQL service container.
-- `.github/workflows/frontend.yml` — lints, type-checks and builds the Next.js app.
+- `.github/workflows/frontend.yml` — lints, type-checks, runs the unit tests, builds the app and runs the Playwright end-to-end tests.
 
 ## License
 
