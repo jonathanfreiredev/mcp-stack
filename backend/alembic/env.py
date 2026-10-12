@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 from app.db.models import Base
+from app.organizations import models as organizations_models  # noqa: F401  (register tables)
 from app.settings import settings
 from app.users import models as users_models  # noqa: F401  (register tables)
 

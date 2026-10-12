@@ -4,8 +4,11 @@ List endpoints paginate with ``limit``/``offset`` and return an ``OffsetPage``
 envelope. Ordering goes through a per-endpoint allowlist, so a client can never
 sort by an arbitrary column.
 
-The parameter objects are Pydantic models, so an endpoint receives them with
-``Annotated[PaginationParams, Query()]``.
+The parameter objects are Pydantic models; a list endpoint receives them with
+``Annotated[ListParams, Query()]``. FastAPI expands a single model into query
+parameters but only handles one per endpoint — given two, it treats each as a
+scalar and rejects every request — so pagination and sorting are combined in
+``ListParams``.
 
 Keyset (cursor) pagination is the documented alternative for large, high-churn
 feeds; it is not implemented here because there is no collection endpoint yet.
@@ -15,7 +18,7 @@ See the "Pagination and sorting" section of the README.
 from collections.abc import Mapping
 
 from fastapi import HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import ColumnElement
 
 DEFAULT_LIMIT = 20
@@ -80,6 +83,20 @@ class SortParams(BaseModel):
         primary_descending = specs[0][1]
         clauses.append(tiebreaker.desc() if primary_descending else tiebreaker.asc())
         return clauses
+
+
+class ListParams(PaginationParams, SortParams):
+    """The query parameters a list endpoint accepts, as one model.
+
+    Pagination and sorting are kept as separate classes because they are separate
+    concerns, but FastAPI expands only one model per endpoint, so endpoints take
+    this combination: ``Annotated[ListParams, Query()]``.
+
+    Unknown query parameters are rejected instead of silently ignored, so a typo
+    like ``?limt=2`` is a 422 rather than a surprise page size.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
 
 def _parse_sort(raw: str, allowed: Mapping[str, ColumnElement]) -> list[tuple[str, bool]]:

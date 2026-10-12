@@ -28,6 +28,12 @@ backend/
 │   │   ├── service.py         # Just-in-time profile provisioning
 │   │   ├── dependencies.py    # TokenClaims -> local User
 │   │   └── router.py          # /users endpoints (read, update, delete me)
+│   ├── organizations/
+│   │   ├── models.py          # Organization + Membership (the tenant model)
+│   │   ├── schemas.py         # OrganizationRead / MembershipRead
+│   │   ├── service.py         # Create with an owner, list, resolve memberships
+│   │   ├── dependencies.py    # Path organization -> the caller's membership
+│   │   └── router.py          # /organizations endpoints
 │   ├── health/
 │   │   └── router.py          # /health liveness + /health/ready readiness
 │   ├── middleware/
@@ -206,13 +212,17 @@ When you add a new model, import it in `alembic/env.py` so it is included in aut
 
 Protected endpoints require an `Authorization: Bearer <supabase_access_token>` header.
 
-| Method | Path            | Auth | Description                                             |
-| ------ | --------------- | :--: | ------------------------------------------------------- |
-| GET    | `/health`       |      | Liveness: the process is up (no external checks)        |
-| GET    | `/health/ready` |      | Readiness: the database is reachable (`503` if not)     |
-| GET    | `/v1/users/me`  |  ✓   | Return the current profile (provisions it on first use) |
-| PATCH  | `/v1/users/me`  |  ✓   | Update the profile name                                 |
-| DELETE | `/v1/users/me`  |  ✓   | Delete the profile (hard delete)                        |
+| Method | Path                             | Auth | Description                                             |
+| ------ | -------------------------------- | :--: | ------------------------------------------------------- |
+| GET    | `/health`                        |      | Liveness: the process is up (no external checks)        |
+| GET    | `/health/ready`                  |      | Readiness: the database is reachable (`503` if not)     |
+| GET    | `/v1/users/me`                   |  ✓   | Return the current profile (provisions it on first use) |
+| PATCH  | `/v1/users/me`                   |  ✓   | Update the profile name                                 |
+| DELETE | `/v1/users/me`                   |  ✓   | Delete the profile (hard delete)                        |
+| POST   | `/v1/organizations`              |  ✓   | Create an organization; the caller becomes its owner    |
+| GET    | `/v1/organizations`              |  ✓   | List the organizations the caller belongs to            |
+| GET    | `/v1/organizations/{id}`         |  ✓   | Read one organization the caller belongs to             |
+| GET    | `/v1/organizations/{id}/members` |  ✓   | List the members of an organization                     |
 
 The application API is versioned under `/v1` (`app/api.py`); the health checks
 stay unversioned so a future `/v2` never breaks orchestrators.
@@ -244,12 +254,17 @@ Responses use the `OffsetPage` envelope:
 
 `total` counts every row matching the filters (ignoring pagination) so a client
 can render "page X of Y"; it costs an extra `COUNT` query. Example:
-`GET /users?limit=20&offset=40&sort=-created_at`.
+`GET /v1/organizations?limit=20&offset=40&sort=-created_at`.
 
 Implementation notes:
 
 - Resolve `sort` against a per-endpoint allowlist and pass the result to
   `select(...).order_by(...)`. Never build `ORDER BY` from raw client input.
+- A list endpoint receives its parameters as one model:
+  `Annotated[ListParams, Query()]`. FastAPI expands a single model into query
+  parameters but only handles one per endpoint, so `ListParams` combines
+  `PaginationParams` and `SortParams`. Unknown parameters are rejected, so a typo
+  is a `422` instead of a silently ignored filter.
 - `SortParams.order_by(...)` always appends a unique tiebreaker (`id`), so the
   order is total and rows cannot repeat or vanish between pages.
 - Filter rows the endpoint owns with typed query parameters, and keep
@@ -275,6 +290,36 @@ feeds, a native app — use keyset instead:
 Keyset cannot return `total` or jump to page N; that is the price of being
 stable and fast at any depth. Pick **one mode per endpoint**, never both.
 
+## Organizations and tenancy
+
+An **organization** is the tenant: every domain row you add belongs to exactly
+one, and a **membership** grants a user a role (`owner` or `member`) inside it.
+Authorization resolves permissions through memberships, never through the user,
+so adding a resource means adding an `organization_id` and filtering by the
+caller's membership.
+
+Rules these endpoints follow:
+
+- **The tenant comes from the token, never from the request.** A caller's
+  organizations are resolved from their memberships, so no request can ask for a
+  tenant the caller does not belong to.
+- **A non-member gets a 404, not a 403.** A 403 would confirm that the
+  organization exists, which leaks the tenant map to anyone who can guess an id.
+  `app/organizations/dependencies.py` is the single place that rule lives.
+- **Roles are validated in the database too** (`ck_memberships_role_valid`), so a
+  manual query cannot introduce a role the authorization layer does not know.
+
+Creating an organization writes the organization and its owner membership in one
+transaction: an organization nobody belongs to would be unreachable, because
+every read is gated on a membership.
+
+Two things to decide when you adapt this:
+
+- Deleting a profile cascades to its memberships, but an organization whose last
+  owner is deleted is left with no members. Decide what your product does: block
+  deletion for sole owners, transfer ownership, or delete the tenant.
+- Organizations have no UI yet; they are managed through the API.
+
 ## Authentication notes
 
 - **Supabase Auth owns the user lifecycle**: signup, email verification, password reset, social login and sessions. This service stores no passwords and issues no tokens.
@@ -299,4 +344,5 @@ your real frontend domain(s) before deploying.
 
 - `app/db/models.py` defines a shared `BaseModel` with a UUID primary key plus `created_at`, `updated_at`, and `deleted_at` columns for every table.
 - The `User` model is a **profile**: `supabase_user_id` (unique, links to Supabase), `email`, `full_name`. Add your own fields and relations on top of `id`.
+- `Organization` and `Membership` (`app/organizations/models.py`) are the tenant model: resources belong to an organization and roles are resolved through memberships. See "Organizations and tenancy".
 - `email` is **indexed but not unique**: it mirrors a Supabase-owned value, so Supabase is the source of truth. The identity key is `supabase_user_id`.

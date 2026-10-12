@@ -34,6 +34,8 @@ Authentication is delegated to [**Supabase Auth**](https://supabase.com/docs/gui
 
 The browser authenticates against Supabase through Next.js server actions; the session is a cookie managed by `@supabase/ssr`. The browser never talks to FastAPI directly: the Next.js server calls it with the Supabase access token, and the backend verifies that token against Supabase's JWKS before touching the database.
 
+Domain data is **multi-tenant**: every row belongs to an organization, and access is resolved through the caller's membership in it. See "Organizations and tenancy" in the [backend README](backend/README.md).
+
 ## Repository structure
 
 ```
@@ -42,6 +44,7 @@ The browser authenticates against Supabase through Next.js server actions; the s
 │   ├── app/
 │   │   ├── auth/            # JWT verification + bearer dependency
 │   │   ├── users/           # Profile model, schemas, JIT provisioning, /users router
+│   │   ├── organizations/   # Tenant model (organization + membership), /organizations router
 │   │   ├── health/          # Liveness + readiness probes
 │   │   ├── middleware/      # Request id + structured access log
 │   │   ├── db/              # Async engine, session, base model
@@ -174,13 +177,17 @@ Environment variables in the frontend are validated at startup with `@t3-oss/env
 
 All endpoints live on the FastAPI backend. Protected routes expect an `Authorization: Bearer <supabase_access_token>` header.
 
-| Method | Path            | Auth | Description                                             |
-| ------ | --------------- | :--: | ------------------------------------------------------- |
-| GET    | `/health`       |      | Liveness: the process is up (no external checks)        |
-| GET    | `/health/ready` |      | Readiness: the database is reachable (`503` if not)     |
-| GET    | `/v1/users/me`  |  ✓   | Return the current profile (provisions it on first use) |
-| PATCH  | `/v1/users/me`  |  ✓   | Update the profile name                                 |
-| DELETE | `/v1/users/me`  |  ✓   | Delete the profile (hard delete)                        |
+| Method | Path                             | Auth | Description                                             |
+| ------ | -------------------------------- | :--: | ------------------------------------------------------- |
+| GET    | `/health`                        |      | Liveness: the process is up (no external checks)        |
+| GET    | `/health/ready`                  |      | Readiness: the database is reachable (`503` if not)     |
+| GET    | `/v1/users/me`                   |  ✓   | Return the current profile (provisions it on first use) |
+| PATCH  | `/v1/users/me`                   |  ✓   | Update the profile name                                 |
+| DELETE | `/v1/users/me`                   |  ✓   | Delete the profile (hard delete)                        |
+| POST   | `/v1/organizations`              |  ✓   | Create an organization; the caller becomes its owner    |
+| GET    | `/v1/organizations`              |  ✓   | List the organizations the caller belongs to            |
+| GET    | `/v1/organizations/{id}`         |  ✓   | Read one organization the caller belongs to             |
+| GET    | `/v1/organizations/{id}/members` |  ✓   | List the members of an organization                     |
 
 The application API is versioned under `/v1`. The health checks stay unversioned so a future `/v2` never breaks orchestrators.
 
