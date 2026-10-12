@@ -14,6 +14,12 @@ class OrganizationCreate(BaseModel):
     name: str = Field(min_length=1, max_length=MAX_NAME_LENGTH)
 
 
+class OrganizationUpdate(BaseModel):
+    """Fields a member may change. The slug is assigned at creation and is stable."""
+
+    name: str = Field(min_length=1, max_length=MAX_NAME_LENGTH)
+
+
 class OrganizationRead(BaseModel):
     """An organization as seen by one of its members.
 

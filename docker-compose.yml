@@ -3,26 +3,32 @@ name: nextjs-fastapi
 # Local development stack: PostgreSQL plus the API and the web app, with the
 # source mounted and the dev servers running with reload.
 #
+#   cp .env.example .env
 #   docker compose up
+#
+# The Postgres credentials come from the root `.env` (see `.env.example`), which
+# Compose reads for variable substitution. That file is the source of truth: the
+# containers build their DATABASE_URL from it, so host runs (`uv run alembic` or
+# `uv run pytest` inside backend/) need backend/.env to carry the same password.
 #
 # Deployment is not handled here: the frontend is meant for Vercel and the
 # backend for its own service. The backend Dockerfile also has a production
 # stage if you deploy it as a container.
-#
-# Change POSTGRES_PASSWORD before using this anywhere but locally.
 services:
   postgres:
     image: postgres:17
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      # No default on purpose: a silent fallback is how a container and
+      # backend/.env end up with different passwords.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required, see .env.example}
       POSTGRES_DB: ${POSTGRES_DB:-nextjs-fastapi}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -38,7 +44,7 @@ services:
     env_file: &backend-env-file
       - ./backend/.env
     environment: &backend-env
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-nextjs-fastapi}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?required, see .env.example}@postgres:5432/${POSTGRES_DB:-nextjs-fastapi}
       ENV: development
       FRONTEND_URL: http://localhost:3000
     depends_on:

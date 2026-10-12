@@ -20,6 +20,28 @@ async def _create_organization(client, token: str, name: str = "Acme") -> dict:
     return response.json()
 
 
+async def _add_member(
+    client,
+    db_session,
+    *,
+    organization_id: str,
+    token: str,
+    email: str,
+    role: str = "member",
+) -> None:
+    """Provision the token's user and add them to the organization.
+
+    Invitations do not exist yet, so a test builds the membership directly, the
+    way accepting one eventually would.
+    """
+    await client.get("/v1/users/me", headers=auth_header(token))
+    user = await db_session.scalar(select(User).where(User.email == email))
+    db_session.add(
+        Membership(user_id=user.id, organization_id=uuid.UUID(organization_id), role=role)
+    )
+    await db_session.commit()
+
+
 async def test_organizations_require_authentication(client):
     assert (await client.get("/v1/organizations")).status_code == 401
     assert (await client.post("/v1/organizations", json={"name": "Acme"})).status_code == 401
@@ -64,6 +86,84 @@ async def test_reading_an_organization_returns_the_callers_role(client):
     assert response.json()["role"] == "owner"
 
 
+async def test_renaming_an_organization_works_for_the_owner(client):
+    token = mint_token()
+    organization = await _create_organization(client, token)
+
+    response = await client.patch(
+        f"/v1/organizations/{organization['id']}",
+        json={"name": "Acme Renamed"},
+        headers=auth_header(token),
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["name"] == "Acme Renamed"
+    # The slug identifies the organization in URLs, so renaming must not move it.
+    assert body["slug"] == organization["slug"]
+
+
+async def test_renaming_requires_the_owner_role(client, db_session):
+    """A member can read the organization but not change it."""
+    owner_token = mint_token(email="owner@example.com")
+    member_token = mint_token(email="member@example.com")
+    organization = await _create_organization(client, owner_token)
+
+    await _add_member(
+        client,
+        db_session,
+        organization_id=organization["id"],
+        token=member_token,
+        email="member@example.com",
+    )
+
+    read = await client.get(
+        f"/v1/organizations/{organization['id']}", headers=auth_header(member_token)
+    )
+    assert read.status_code == 200
+
+    rename = await client.patch(
+        f"/v1/organizations/{organization['id']}",
+        json={"name": "Hijacked"},
+        headers=auth_header(member_token),
+    )
+    assert rename.status_code == 403
+
+
+async def test_renaming_is_invisible_to_non_members(client):
+    owner_token = mint_token()
+    stranger_token = mint_token()
+    organization = await _create_organization(client, owner_token)
+
+    response = await client.patch(
+        f"/v1/organizations/{organization['id']}",
+        json={"name": "Nope"},
+        headers=auth_header(stranger_token),
+    )
+
+    # A 403 here would confirm that the organization exists.
+    assert response.status_code == 404
+
+
+async def test_renaming_requires_authentication(client):
+    response = await client.patch(f"/v1/organizations/{uuid.uuid4()}", json={"name": "Acme"})
+
+    assert response.status_code == 401
+
+
+async def test_renaming_rejects_an_empty_name(client):
+    token = mint_token()
+    organization = await _create_organization(client, token)
+
+    response = await client.patch(
+        f"/v1/organizations/{organization['id']}",
+        json={"name": ""},
+        headers=auth_header(token),
+    )
+
+    assert response.status_code == 422
+
+
 async def test_an_organization_is_invisible_to_non_members(client):
     """Tenancy is enforced by the query: a stranger gets a 404, not a 403.
 
@@ -102,17 +202,13 @@ async def test_members_see_organizations_they_do_not_own(client, db_session):
     member_token = mint_token(email="member@example.com")
     organization = await _create_organization(client, owner_token)
 
-    # Provision the second profile, then add it the way an invitation would.
-    await client.get("/v1/users/me", headers=auth_header(member_token))
-    member = await db_session.scalar(select(User).where(User.email == "member@example.com"))
-    db_session.add(
-        Membership(
-            user_id=member.id,
-            organization_id=uuid.UUID(organization["id"]),
-            role="member",
-        )
+    await _add_member(
+        client,
+        db_session,
+        organization_id=organization["id"],
+        token=member_token,
+        email="member@example.com",
     )
-    await db_session.commit()
 
     response = await client.get("/v1/organizations", headers=auth_header(member_token))
 

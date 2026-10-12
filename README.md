@@ -34,7 +34,7 @@ Authentication is delegated to [**Supabase Auth**](https://supabase.com/docs/gui
 
 The browser authenticates against Supabase through Next.js server actions; the session is a cookie managed by `@supabase/ssr`. The browser never talks to FastAPI directly: the Next.js server calls it with the Supabase access token, and the backend verifies that token against Supabase's JWKS before touching the database.
 
-Domain data is **multi-tenant**: every row belongs to an organization, and access is resolved through the caller's membership in it. See "Organizations and tenancy" in the [backend README](backend/README.md).
+Domain data is **multi-tenant**: every row belongs to an organization, and access is resolved through the caller's membership in it. See "Organizations and tenancy" in the [backend README](backend/README.md). The API accepts only first-party session tokens; tokens issued to an AI agent are turned away.
 
 ## Repository structure
 
@@ -130,10 +130,20 @@ Open http://localhost:3000 and sign up. Supabase sends a verification email (che
 `docker-compose.yml` is a **local development** stack: PostgreSQL plus the API and the web app, with the source mounted and the dev servers running with reload.
 
 ```bash
+cp .env.example .env   # Postgres credentials for the stack
 docker compose up
 ```
 
-A one-shot `migrate` service runs `alembic upgrade head` before the API starts, so the schema is always up to date. The backend and frontend read their environment from **`backend/.env`** and **`frontend/.env`** respectively (`env_file` in `docker-compose.yml`), so there is no separate root file to maintain — only the Docker-internal hostnames (`postgres`, `backend`) are overridden.
+A one-shot `migrate` service runs `alembic upgrade head` before the API starts, so the schema is always up to date.
+
+Three files supply the environment, and each has one job:
+
+- **`.env`** (root) — the Postgres credentials. Compose reads it for variable substitution, so it is the source of truth for the database the stack runs on.
+- **`backend/.env`** and **`frontend/.env`** — what the API and the web app read (`env_file` in `docker-compose.yml`). Only the Docker-internal hostnames (`postgres`, `backend`) are overridden.
+
+Because the containers build their `DATABASE_URL` from the root `.env`, **`backend/.env` must carry the same password** if you also want to run Alembic or pytest from the host. `POSTGRES_PASSWORD` is required on purpose — the compose file gives it no default — so a missing `.env` fails loudly instead of silently picking one.
+
+`backend/start-database.sh` is the alternative to the compose stack: it starts a standalone Postgres container matching `backend/.env`'s `DATABASE_URL`, which is what you want when running the API from the host. It and the compose service both bind port 5432, so run one or the other, not both.
 
 Deployment is not handled here: the frontend goes to Vercel (which builds it natively) and the backend to its own service. The `backend/Dockerfile` also has a production stage if you deploy it as a container.
 
@@ -147,6 +157,18 @@ The backend exposes two unauthenticated probes for orchestrators, load balancers
 On **Render** or **Railway**, set the health check path to `/health`. Locally, `docker-compose.yml` probes `/health` and the frontend waits for the backend to be healthy.
 
 ## Environment variables
+
+### `.env` (root)
+
+Read by `docker-compose.yml` for variable substitution, so it is the source of truth for the database the stack runs on. Start from `.env.example`.
+
+`POSTGRES_PASSWORD` deliberately has no default in the compose file: a missing `.env` fails loudly instead of silently picking one. It is also only applied the first time the Postgres volume is created, so changing it later requires recreating the volume (`docker compose down -v`). For Alembic or pytest runs from the host, `backend/.env` must carry the same password.
+
+| Variable            | Required | Description                                                          |
+| ------------------- | -------- | -------------------------------------------------------------------- |
+| `POSTGRES_USER`     | No       | Role the container creates (default `postgres`).                     |
+| `POSTGRES_PASSWORD` | Yes      | Password for that role. The containers build `DATABASE_URL` from it. |
+| `POSTGRES_DB`       | No       | Database the container creates (default `nextjs-fastapi`).           |
 
 ### `backend/.env`
 
@@ -187,6 +209,7 @@ All endpoints live on the FastAPI backend. Protected routes expect an `Authoriza
 | POST   | `/v1/organizations`              |  ✓   | Create an organization; the caller becomes its owner    |
 | GET    | `/v1/organizations`              |  ✓   | List the organizations the caller belongs to            |
 | GET    | `/v1/organizations/{id}`         |  ✓   | Read one organization the caller belongs to             |
+| PATCH  | `/v1/organizations/{id}`         |  ✓   | Rename an organization (owner only)                     |
 | GET    | `/v1/organizations/{id}/members` |  ✓   | List the members of an organization                     |
 
 The application API is versioned under `/v1`. The health checks stay unversioned so a future `/v2` never breaks orchestrators.

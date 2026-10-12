@@ -39,6 +39,7 @@ def mint_token(
     audience: str | None = None,
     issuer: str | None = None,
     expires_in_seconds: int = 3600,
+    client_id: str | None = None,
 ) -> str:
     now = datetime.now(UTC)
     payload = {
@@ -51,4 +52,8 @@ def mint_token(
         "email": email,
         "user_metadata": {"full_name": full_name},
     }
+    if client_id is not None:
+        # Supabase omits this claim for its own (first-party) logins and sets it
+        # when the token was issued to an OAuth client.
+        payload["client_id"] = client_id
     return jwt.encode(payload, PRIVATE_KEY, algorithm=ALGORITHM)

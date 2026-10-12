@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api import api_v1_router
+from app.authz.permissions import PermissionDenied
 from app.health.router import health_router
 from app.logging_config import configure_logging
 from app.middleware.request_id import RequestIdMiddleware
@@ -14,18 +15,20 @@ configure_logging()
 
 app = FastAPI()
 
+# Domain errors carry no HTTP knowledge — the MCP tools call the same code — so
+# they are translated here, at the edge.
+
 
 @app.exception_handler(OrganizationSlugConflict)
 async def _organization_slug_conflict(_: Request, exc: OrganizationSlugConflict) -> JSONResponse:
-    """Translate the domain error into HTTP.
+    """The generated slug was taken; a different name would work."""
+    return JSONResponse(status_code=status.HTTP_409_CONFLICT, content={"detail": str(exc)})
 
-    Services stay HTTP-free because the MCP tools call them too, so the
-    translation lives at the edge, next to the application.
-    """
-    return JSONResponse(
-        status_code=status.HTTP_409_CONFLICT,
-        content={"detail": str(exc)},
-    )
+
+@app.exception_handler(PermissionDenied)
+async def _permission_denied(_: Request, exc: PermissionDenied) -> JSONResponse:
+    """The caller's role does not grant what the endpoint requires."""
+    return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": str(exc)})
 
 
 # Unauthenticated probes for orchestrators and uptime monitors. Kept outside

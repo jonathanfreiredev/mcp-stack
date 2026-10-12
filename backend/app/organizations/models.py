@@ -1,22 +1,11 @@
 import uuid
-from enum import StrEnum
 
 from sqlalchemy import CheckConstraint, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.authz.permissions import MembershipRole
 from app.db.models import BaseModel
 from app.users.models import User
-
-
-class MembershipRole(StrEnum):
-    """The roles a user can hold inside an organization.
-
-    Kept deliberately small: ``app/authz`` derives permissions from the role, so
-    adding a role is a decision about what it may do, not just a new string.
-    """
-
-    OWNER = "owner"
-    MEMBER = "member"
 
 
 class Organization(BaseModel):

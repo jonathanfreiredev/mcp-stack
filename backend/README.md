@@ -28,6 +28,9 @@ backend/
 │   │   ├── service.py         # Just-in-time profile provisioning
 │   │   ├── dependencies.py    # TokenClaims -> local User
 │   │   └── router.py          # /users endpoints (read, update, delete me)
+│   ├── authz/
+│   │   ├── permissions.py     # Roles, permissions and the policy table
+│   │   └── dependencies.py    # Resolves the REST door's caller (agents rejected)
 │   ├── organizations/
 │   │   ├── models.py          # Organization + Membership (the tenant model)
 │   │   ├── schemas.py         # OrganizationRead / MembershipRead
@@ -222,6 +225,7 @@ Protected endpoints require an `Authorization: Bearer <supabase_access_token>` h
 | POST   | `/v1/organizations`              |  ✓   | Create an organization; the caller becomes its owner    |
 | GET    | `/v1/organizations`              |  ✓   | List the organizations the caller belongs to            |
 | GET    | `/v1/organizations/{id}`         |  ✓   | Read one organization the caller belongs to             |
+| PATCH  | `/v1/organizations/{id}`         |  ✓   | Rename an organization (owner only)                     |
 | GET    | `/v1/organizations/{id}/members` |  ✓   | List the members of an organization                     |
 
 The application API is versioned under `/v1` (`app/api.py`); the health checks
@@ -327,6 +331,52 @@ Two things to decide when you adapt this:
 - **Just-in-time provisioning**: the first time a valid token is seen, `app/users/service.py` creates the local profile keyed by `supabase_user_id` (the token's `sub`, a stable UUID). Later requests keep the mirrored email in sync. Concurrent first requests are safe: the insert is `ON CONFLICT DO NOTHING` on `supabase_user_id`, so a race never surfaces as a 500. The profile's own `id` is what you should use for relations.
 - **Deleting an account** is a hard delete of the local profile (`DELETE /v1/users/me`). The Supabase identity is removed separately by the frontend, through the admin API. Since the row is gone — and `email` is not unique — the same address can sign up again.
 - `app/auth/dependencies.py` resolves the bearer token into `TokenClaims`; `app/users/dependencies.py` resolves those claims into a local `User`. Inactive or unverified checks are handled by Supabase at authentication time, not here.
+
+## Authorization notes
+
+Authentication answers *who is this*; authorization answers *what may they do*. They
+are separate modules on purpose: `app/auth/` verifies the token, `app/authz/`
+decides what the caller may do with it.
+
+**Permissions are scoped to an organization**, because every domain row hangs off
+one: what a caller may do comes from their role in the owning organization, never
+from the caller's identity. `app/authz/permissions.py` keeps the whole policy in
+one table:
+
+```python
+ROLE_PERMISSIONS = {
+    MembershipRole.OWNER: frozenset({Permission.ORGANIZATION_READ, Permission.ORGANIZATION_UPDATE}),
+    MembershipRole.MEMBER: frozenset({Permission.ORGANIZATION_READ}),
+}
+```
+
+Three properties worth keeping when you add permissions:
+
+- **Deny by default.** `require(...)` looks the role up and grants nothing when the
+  table does not list it, so a role that reaches the database without a policy is
+  powerless instead of accidentally powerful.
+- **The check cannot be skipped.** `app/organizations/dependencies.py` exposes a
+  dependency *factory*: an endpoint asks for
+  `Depends(require_membership(Permission.ORGANIZATION_UPDATE))` and receives the
+  organization only if the caller is a member and their role grants it. There is no
+  way to resolve an organization without naming the permission it needs.
+- **Two rules, two statuses.** A caller who is not a member gets a **404**, because
+  a 403 would confirm that the organization exists. A member whose role is not
+  enough gets a **403**.
+
+`require(...)` raises a domain error (`PermissionDenied`) rather than an
+`HTTPException`, and `app/main.py` translates it. The MCP tools call the same code
+and are not HTTP, so the translation belongs at the edge.
+
+### One token, two doors
+
+A Supabase access token carries a `client_id` claim when it was issued to an OAuth
+client — an AI agent — and no such claim for the application's own login. Those
+tokens belong to the agent door (the MCP server), and `app/authz/dependencies.py`
+is where the API turns them away with a **403 rather than a 401**: the token is
+valid and re-authenticating would produce the same one, so a client should not
+retry. This is what keeps an agent from reaching the API directly and skipping the
+tool policies.
 
 ## Conventions
 

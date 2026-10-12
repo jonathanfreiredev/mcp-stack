@@ -8,7 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.organizations.models import Membership, MembershipRole, Organization
+from app.authz.permissions import MembershipRole
+from app.organizations.models import Membership, Organization
 from app.pagination import ListParams
 from app.users.models import User
 
@@ -43,6 +44,18 @@ async def create_with_owner(session: AsyncSession, *, owner: User, name: str) ->
     session.add(
         Membership(user_id=owner.id, organization_id=organization.id, role=MembershipRole.OWNER)
     )
+    await session.commit()
+    await session.refresh(organization)
+    return organization
+
+
+async def rename(session: AsyncSession, *, organization: Organization, name: str) -> Organization:
+    """Change an organization's name.
+
+    The slug is assigned once, at creation, and stays put: it identifies the
+    organization in URLs, so renaming must not break existing links.
+    """
+    organization.name = name
     await session.commit()
     await session.refresh(organization)
     return organization

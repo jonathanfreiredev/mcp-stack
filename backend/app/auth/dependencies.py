@@ -26,6 +26,9 @@ class TokenClaims:
     subject: uuid.UUID
     email: str | None
     metadata: dict
+    # Set when the token was issued to an OAuth client (an AI agent), and unset
+    # for the application's own login. Each door accepts only its own tokens.
+    client_id: str | None = None
 
 
 async def get_token_claims(
@@ -55,4 +58,5 @@ async def get_token_claims(
         subject=subject_id,
         email=claims.get("email"),
         metadata=claims.get("user_metadata") or {},
+        client_id=claims.get("client_id"),
     )
