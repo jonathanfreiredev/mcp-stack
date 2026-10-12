@@ -152,6 +152,19 @@ async def test_an_unknown_sort_field_is_rejected(client):
     assert response.status_code == 422
 
 
+async def test_each_list_endpoint_has_its_own_sort_allowlist(client):
+    """The members endpoint sorts by its own fields, not by the organization's."""
+    token = mint_token()
+    organization = await _create_organization(client, token)
+    members_url = f"/v1/organizations/{organization['id']}/members"
+
+    rejected = await client.get(f"{members_url}?sort=name", headers=auth_header(token))
+    assert rejected.status_code == 422
+
+    accepted = await client.get(f"{members_url}?sort=role", headers=auth_header(token))
+    assert accepted.status_code == 200
+
+
 async def test_an_unknown_query_parameter_is_rejected(client):
     """List parameters are validated together, so a typo is a 422, not ignored."""
     token = mint_token()

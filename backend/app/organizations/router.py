@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_async_db_session
 from app.organizations.dependencies import get_current_membership
-from app.organizations.models import Membership, MembershipRole, Organization
+from app.organizations.models import Membership, MembershipRole
 from app.organizations.schemas import MembershipRead, OrganizationCreate, OrganizationRead
 from app.organizations.service import create_with_owner, list_for_user, list_members
 from app.pagination import ListParams, OffsetPage
@@ -13,18 +13,6 @@ from app.users.dependencies import get_current_user
 from app.users.models import User
 
 organizations_router = APIRouter(prefix="/organizations", tags=["organizations"])
-
-# Per-endpoint sort allowlists: a client can only order by fields named here.
-_ORGANIZATION_SORT_FIELDS = {
-    "created_at": Organization.created_at,
-    "name": Organization.name,
-    "slug": Organization.slug,
-}
-
-_MEMBER_SORT_FIELDS = {
-    "created_at": Membership.created_at,
-    "role": Membership.role,
-}
 
 
 @organizations_router.post("", response_model=OrganizationRead, status_code=status.HTTP_201_CREATED)
