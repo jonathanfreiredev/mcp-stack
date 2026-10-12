@@ -25,11 +25,11 @@ export default async function HomePage() {
   const userName = session?.user.name;
 
   return (
-    <section className="relative isolate overflow-x-clip px-4 py-8 sm:px-6 lg:px-8">
+    <section className="relative isolate flex min-h-svh flex-col overflow-x-clip">
       <BackgroundCircles />
 
-      <div className="mx-auto grid min-h-[calc(100dvh-var(--header-height,4rem))] w-full max-w-5xl place-items-center text-center">
-        <div className="w-full space-y-8">
+      <div className="flex flex-1 items-center justify-center px-4 pt-[var(--header-height)] pb-8 sm:px-6 lg:px-8">
+        <div className="w-full max-w-5xl space-y-8 text-center">
           {isLoggedIn ? (
             <div className="border-border/70 bg-background/70 text-muted-foreground mx-auto inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm">
               <Sparkles className="text-primary size-3.5" />
@@ -74,6 +74,18 @@ export default async function HomePage() {
                 <ArrowRight className="size-4" />
               </Button>
             </Link>
+
+            {!isLoggedIn ? (
+              <Link href="/auth/signup">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                >
+                  Sign up
+                </Button>
+              </Link>
+            ) : null}
           </div>
 
           <p className="text-muted-foreground/90 text-xs sm:text-sm">

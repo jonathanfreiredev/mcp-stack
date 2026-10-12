@@ -20,6 +20,7 @@ export function SidebarSheetAuth({ isLoggedIn }: SidebarSheetAuthProps) {
       {!isLoggedIn ? (
         <>
           <SheetClose
+            nativeButton={false}
             render={
               <Item
                 variant="default"
@@ -39,6 +40,7 @@ export function SidebarSheetAuth({ isLoggedIn }: SidebarSheetAuthProps) {
             }
           />
           <SheetClose
+            nativeButton={false}
             render={
               <Item
                 variant="muted"
@@ -60,6 +62,7 @@ export function SidebarSheetAuth({ isLoggedIn }: SidebarSheetAuthProps) {
         </>
       ) : (
         <SheetClose
+          nativeButton={false}
           render={
             <Item
               variant="muted"

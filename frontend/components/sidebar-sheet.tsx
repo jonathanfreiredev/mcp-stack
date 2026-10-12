@@ -22,7 +22,12 @@ export function SidebarSheet({ isLoggedIn }: SidebarSheetProps) {
     <Sheet>
       <SheetTrigger
         render={
-          <Button variant="outline" size="icon-lg" className="rounded-sm">
+          <Button
+            variant="outline"
+            size="icon-lg"
+            className="rounded-sm"
+            aria-label="Open menu"
+          >
             <MenuIcon />
           </Button>
         }
@@ -42,25 +47,28 @@ export function SidebarSheet({ isLoggedIn }: SidebarSheetProps) {
           />
         </SheetHeader>
         <div className="flex w-full flex-col gap-0 px-2">
-          <SheetClose
-            render={
-              <Item
-                variant="default"
-                size="sm"
-                className="cursor-pointer"
-                render={
-                  <Link href={isLoggedIn ? "/profile" : "/auth/login"}>
-                    <ItemMedia>
-                      <UserIcon className="size-5" />
-                    </ItemMedia>
-                    <ItemContent>
-                      <ItemTitle>Profile</ItemTitle>
-                    </ItemContent>
-                  </Link>
-                }
-              />
-            }
-          />
+          {isLoggedIn ? (
+            <SheetClose
+              nativeButton={false}
+              render={
+                <Item
+                  variant="default"
+                  size="sm"
+                  className="cursor-pointer"
+                  render={
+                    <Link href="/profile">
+                      <ItemMedia>
+                        <UserIcon className="size-5" />
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle>Profile</ItemTitle>
+                      </ItemContent>
+                    </Link>
+                  }
+                />
+              }
+            />
+          ) : null}
 
           <SidebarSheetAuth isLoggedIn={isLoggedIn} />
         </div>

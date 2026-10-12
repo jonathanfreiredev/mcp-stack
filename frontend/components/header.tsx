@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { HeaderAuthButtons } from "./auth/header-auth-buttons";
+import { HeaderBackdrop } from "./header-backdrop";
 import { SidebarSheet } from "./sidebar-sheet";
 import { DropdownAvatarMenu } from "./dropdown-avatar-menu";
 import { Session } from "@/server/auth/auth.lib";
@@ -11,6 +12,8 @@ interface HeaderProps {
 export async function Header({ session }: HeaderProps) {
   return (
     <header className="fixed z-1 h-24 w-full px-6">
+      <HeaderBackdrop />
+
       <div className="flex h-full w-full items-center justify-between">
         <Link href="/" passHref className="flex h-full items-center">
           <h1 className="relative font-semibold text-gray-800">

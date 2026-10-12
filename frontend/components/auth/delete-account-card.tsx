@@ -28,7 +28,7 @@ export const DeleteAccountCard = () => {
   const [isOpen, setOpen] = useState(false);
 
   return (
-    <Card className="ring-destructive/40">
+    <Card className="bg-destructive/5 ring-destructive/40">
       <CardHeader>
         <CardTitle className="text-destructive">Danger zone</CardTitle>
         <CardDescription>
