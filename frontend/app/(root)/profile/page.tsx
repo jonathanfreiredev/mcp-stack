@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import { ProfileForm } from "@/components/auth/profile-form";
+import { ConnectedAppsCard } from "@/components/auth/connected-apps-card";
+import { DeleteAccountCard } from "@/components/auth/delete-account-card";
+import { ProfileCard } from "@/components/auth/profile-card";
 import { getSession } from "@/server/auth/auth.lib";
 import { listConnectedApps } from "@/server/oauth/oauth.lib";
 
@@ -16,13 +18,18 @@ export default async function ProfilePage() {
 
   return (
     <div className="flex w-full flex-col items-center px-4 py-8">
-      <ProfileForm
-        user={{
-          name: session?.user.name || "",
-          email: session?.user.email || "",
-        }}
-        connectedApps={connectedApps}
-      />
+      <div className="flex w-full max-w-125 flex-col gap-6">
+        <ProfileCard
+          user={{
+            name: session?.user.name || "",
+            email: session?.user.email || "",
+          }}
+        />
+
+        <ConnectedAppsCard result={connectedApps} />
+
+        <DeleteAccountCard />
+      </div>
     </div>
   );
 }
