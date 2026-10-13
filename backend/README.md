@@ -382,8 +382,33 @@ client — an AI agent — and no such claim for the application's own login. Th
 tokens belong to the agent door (the MCP server), and `app/authz/dependencies.py`
 is where the API turns them away with a **403 rather than a 401**: the token is
 valid and re-authenticating would produce the same one, so a client should not
-retry. This is what keeps an agent from reaching the API directly and skipping the
-tool policies.
+retry. This is what keeps an agent from reaching the API surface directly: the
+tools are the interface designed for machine callers, and accepting an agent token
+here would make them optional.
+
+### What each layer protects
+
+Four layers, each answering a different question. Worth having straight, because
+it is easy to build the wrong one and consider the job done:
+
+- **Supabase Auth answers *who*.** It owns the user lifecycle and signs the token;
+  `app/auth/verifier.py` checks the signature against the JWKS plus `iss`, `aud`
+  and `exp`. Every layer below trusts what it returns and nothing else.
+- **The door answers *which caller it serves*.** The API admits only first-party
+  tokens (`app/authz/dependencies.py`); the MCP server takes the ones Supabase
+  issued to an agent (`app/mcp/auth.py`), and does not turn a first-party one away.
+  Neither door re-verifies the token, and neither is a permission check.
+- **The role answers *what that caller may do, to this row*.** It is the only
+  fine-grained layer. It lives in `app/authz/permissions.py` and in the domain
+  services, and both doors reach it by calling the same service — which is why an
+  operation with no service behind it has no authorization at all.
+- **The tool answers *what a machine caller may ask for*.** Caller from the token,
+  arguments validated by the schema, result typed. Nothing else.
+
+There is deliberately **no per-tool and no per-client permission layer**. An agent
+acts as the user whose token it carries, so its limits are that user's limits; a
+table saying which tools a given client may use would be a rule the API does not
+have, kept in a place the API cannot see.
 
 ## MCP server
 
@@ -415,13 +440,46 @@ has to point at.
 cookies, so a load balancer cannot pin them to the instance holding their session.
 Without it the server only works as a single instance.
 
+That choice has a consequence worth knowing before writing a tool: with no session
+there is also no back-channel, so a tool cannot interrupt the call to ask the
+client for anything. `ctx.elicit()`, sampling and roots all fail with
+`NoBackChannelError`. Asking the user therefore has to go the other way — the tool
+returns the request, the call ends, and the client calls again with the answer,
+which is what the protocol's 2026-07-28 era introduced for exactly this case.
+`ask_the_user` in `app/mcp/tools.py` is that pattern to copy. A client that
+negotiated an older era cannot be asked at all.
+
 ### Adding a tool
 
-A tool is a thin adapter: take the caller from the token, call a domain service,
-return a typed result. Business rules never live in a tool. `app/mcp/tools.py`
-ships one (`whoami`) as the pattern to copy; register new ones in
-`register_tools`. Registration is explicit rather than a decorator, so the server
-module owns the list of tools and the tools hold no reference back to it.
+A tool is a thin adapter, and the steps are short. `whoami` and `ask_the_user` in
+`app/mcp/tools.py` are the two patterns to copy from.
+
+1. Write the function and give it a return type. That type is the contract: a
+   Pydantic model becomes the tool's `outputSchema`, so the caller gets data it
+   can read rather than a sentence it is meant to obey.
+2. Take the caller from the access token (`get_access_token()`), never from an
+   argument. Arguments are chosen by a model, and a model can be talked into
+   lying.
+3. Put no rule in the tool: call a domain service and let it check the role. That
+   is the only authorization there is — see "What each layer protects".
+4. If it needs to ask the user something, follow `ask_the_user`. On this server
+   asking means *returning* on one round and resuming on the next; the paragraph
+   above on `stateless_http` is why.
+5. Add it to `register_tools`, the list the server publishes. Registration is
+   explicit rather than a decorator at import time, so the server module owns the
+   list and the tools hold no reference back to it.
+
+Two conventions worth keeping:
+
+- **A published name is never renamed.** Clients pin tool names in their own
+  configuration and a conversation may be mid-flight, so a breaking change
+  publishes a new name (`list_organizations_v2`) beside the old one and lets
+  callers move at their own pace.
+- **A tool is not a place for a rule.** If you find yourself writing an `if` that
+  is about who may do something, it belongs in the service the tool calls.
+
+Everything else about MCP — elicitation, background tasks, sampling, middleware —
+belongs to FastMCP, and its documentation is the reference.
 
 ### The one thing this door cannot check
 
