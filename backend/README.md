@@ -447,7 +447,13 @@ client for anything. `ctx.elicit()`, sampling and roots all fail with
 returns the request, the call ends, and the client calls again with the answer,
 which is what the protocol's 2026-07-28 era introduced for exactly this case.
 `ask_the_user` in `app/mcp/tools.py` is that pattern to copy. A client that
-negotiated an older era cannot be asked at all.
+negotiated an older era cannot be asked at all, unless the client can be told to
+probe for the modern one.
+
+This is not a workaround for our configuration. The same revision removed the
+back-channel from the protocol and deprecated the features that leaned on it —
+roots, sampling, logging — so the handshake form is the path being retired, not the
+safe one to build on. The round-trip is how asking will be done from here.
 
 ### Adding a tool
 
@@ -490,6 +496,14 @@ tokens (`app/authz/dependencies.py`), and FastMCP's own warning about the missin
 audience check does not appear because we hand it our verifier (`app/mcp/auth.py`)
 instead of letting it build one. It is a trade-off we accepted knowingly, not
 something we overlooked.
+
+### A migration to expect
+
+The 2026-07-28 revision starts moving client identification away from **Dynamic
+Client Registration** and towards **Client ID Metadata Documents**. That
+registration flow belongs to Supabase's OAuth server, not to this code: keeping up
+means watching Supabase, not changing anything here. It is written down because it
+is the kind of thing that looks like a bug when it starts happening.
 
 ## Conventions
 
