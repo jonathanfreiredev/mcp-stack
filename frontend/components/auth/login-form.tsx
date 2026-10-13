@@ -6,6 +6,7 @@ import { Controller, useForm } from "react-hook-form";
 import { toast } from "@/components/ui/toast";
 import { z } from "zod";
 import { isProviderEnabled } from "@/lib/auth-providers";
+import { safeNextPath } from "@/lib/safe-next-path";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 import {
@@ -29,9 +30,13 @@ import { loginAction } from "@/server/auth/auth.actions";
 import { GoogleSignInButton } from "./google-sign-in-button";
 
 export const LoginForm = ({
+  next,
   className,
   ...props
-}: React.ComponentProps<"div">) => {
+}: React.ComponentProps<"div"> & {
+  /** Path to return to after logging in (the OAuth consent screen uses it). */
+  next?: string;
+}) => {
   const router = useRouter();
   const emailEnabled = isProviderEnabled("email");
   const googleEnabled = isProviderEnabled("google");
@@ -82,7 +87,7 @@ export const LoginForm = ({
 
     form.reset();
     router.refresh();
-    router.replace("/");
+    router.replace(safeNextPath(next));
   }
 
   return (
@@ -176,7 +181,7 @@ export const LoginForm = ({
           ) : null}
 
           {googleEnabled ? (
-            <GoogleSignInButton className="w-full" />
+            <GoogleSignInButton className="w-full" next={next} />
           ) : null}
 
           <FieldDescription className="text-center">

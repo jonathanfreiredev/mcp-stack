@@ -60,7 +60,7 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 │   └── pyproject.toml       # Dependencies (managed with uv)
 │
 ├── frontend/                # Next.js application
-│   ├── app/                 # App Router pages, layouts, confirm route handler
+│   ├── app/                 # App Router pages, layouts, confirm + OAuth consent routes
 │   ├── components/          # UI + auth components (shadcn/ui based)
 │   ├── server/              # Server actions, schemas, session helper
 │   ├── lib/                 # Env validation, Supabase client, safe-action, providers
@@ -233,6 +233,7 @@ Authentication (signup, login, verification, reset) is handled by **Supabase Aut
 5. The backend **verifies** the token against Supabase's **JWKS** (`iss`, `aud`, `exp`) and **provisions a local profile** keyed by the token's `sub` the first time it sees the user.
 6. Supabase sends verification and password-reset emails; `frontend/app/auth/confirm/route.ts` handles the links and the OAuth callback.
 7. **Account deletion** is a hard delete on both sides: the backend removes the local profile and the frontend then deletes the Supabase identity through the admin API. The email is freed, so the same address can sign up again.
+8. **AI agents** authenticate through Supabase's OAuth 2.1 server: the app registers itself with dynamic client registration, the user approves it on the consent screen (`frontend/app/oauth/consent`), and the resulting token is accepted by the **MCP server**. The API refuses those tokens — an agent can only reach the tools.
 
 ## Common commands
 

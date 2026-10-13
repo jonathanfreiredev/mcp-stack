@@ -7,8 +7,11 @@ import { Button } from "../ui/button";
 
 export const GoogleSignInButton = ({
   className,
+  next,
 }: {
   className?: string;
+  /** Path to return to after signing in. Validated by the action. */
+  next?: string;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -20,7 +23,7 @@ export const GoogleSignInButton = ({
       disabled={isSubmitting}
       onClick={async () => {
         setIsSubmitting(true);
-        const res = await signInWithGoogleAction();
+        const res = await signInWithGoogleAction({ next });
 
         if (res?.serverError) {
           toast.add({

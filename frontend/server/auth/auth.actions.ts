@@ -5,9 +5,11 @@ import { headers } from "next/headers";
 import { returnServerError } from "next-safe-action";
 
 import { createClient } from "@/lib/supabase/server";
+import { safeNextPath } from "@/lib/safe-next-path";
 import { protectedProcedure, publicProcedure } from "@/lib/safe-action";
 import {
   forgotPasswordSchema,
+  googleSignInSchema,
   loginFormSchema,
   resendVerificationSchema,
   resetPasswordSchema,
@@ -20,7 +22,9 @@ const LOGIN_ERROR = "Incorrect email or password.";
 async function baseUrl(): Promise<string> {
   const headerList = await headers();
   const host =
-    headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "localhost:3000";
+    headerList.get("x-forwarded-host") ??
+    headerList.get("host") ??
+    "localhost:3000";
   const protocol = headerList.get("x-forwarded-proto") ?? "http";
   return `${protocol}://${host}`;
 }
@@ -109,21 +113,29 @@ export const logoutAction = publicProcedure.action(async () => {
   return { success: true };
 });
 
-export const signInWithGoogleAction = publicProcedure.action(async () => {
-  const supabase = await createClient();
+export const signInWithGoogleAction = publicProcedure
+  .inputSchema(googleSignInSchema)
+  .action(async ({ parsedInput }) => {
+    const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: { redirectTo: `${await baseUrl()}/auth/confirm?next=/` },
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        // Validated on this side too: this value decides where the browser
+        // lands after signing in.
+        redirectTo: `${await baseUrl()}/auth/confirm?next=${encodeURIComponent(
+          safeNextPath(parsedInput.next),
+        )}`,
+      },
+    });
+
+    if (error) {
+      returnServerError({ code: error.status ?? 400, message: error.message });
+    }
+
+    // The client navigates to this URL to start the OAuth dance.
+    return { url: data.url };
   });
-
-  if (error) {
-    returnServerError({ code: error.status ?? 400, message: error.message });
-  }
-
-  // The client navigates to this URL to start the OAuth dance.
-  return { url: data.url };
-});
 
 export const forgotPasswordAction = publicProcedure
   .inputSchema(forgotPasswordSchema)
@@ -132,7 +144,9 @@ export const forgotPasswordAction = publicProcedure
 
     const { error } = await supabase.auth.resetPasswordForEmail(
       parsedInput.email,
-      { redirectTo: `${await baseUrl()}/auth/confirm?next=/auth/reset-password` },
+      {
+        redirectTo: `${await baseUrl()}/auth/confirm?next=/auth/reset-password`,
+      },
     );
 
     if (error) {

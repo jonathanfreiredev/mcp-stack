@@ -111,6 +111,33 @@ Supabase is the source of truth: a provider only works if it is enabled in the d
 - **Account deletion** — `deleteUserAction` asks for the password again, then hard-deletes the profile through the backend and the Supabase identity through the admin client (`lib/supabase/admin.ts`, service role key). It then signs out and leaves the protected area.
 - **Guards** — `app/auth/layout.tsx` redirects authenticated users away from the auth pages, while `app/profile/page.tsx` redirects unauthenticated users to `/auth/login`. The root layout shows a resend-verification banner while the email is unverified.
 
+## OAuth consent screen
+
+`app/oauth/consent/page.tsx` is where Supabase sends a user who is approving an
+AI agent (an MCP client such as Claude Code). It is the one place the grant can
+be seen before it is given, so it says plainly that the agent will act with the
+user's own access instead of implying a narrower one.
+
+- The page needs the `authorization_id` query parameter Supabase adds to the
+  redirect. Without it, it shows an error rather than failing silently.
+- A visitor with no session is sent to `/auth/login` with the consent URL in
+  `next`, and the login form returns there. Google sign-in carries it too.
+- `app/api/oauth/decision/route.ts` records the decision through a plain form
+  POST, so the screen works without JavaScript. The session cookie is
+  `SameSite=Lax`, which is what stops a cross-site POST from approving anything.
+- An already-approved client comes back from `getAuthorizationDetails` without
+  an `authorization_id`; the page then forwards straight to the client.
+
+Two gaps, both deliberate for now. `next` is not threaded through sign-up or
+email verification, so a visitor without an account has to finish signing up and
+then start the flow again. And there is no UI to list or revoke connected apps —
+the SDK exposes `supabase.auth.oauth.listGrants()` and `revokeGrant()` for that
+whenever it is worth adding.
+
+`lib/safe-next-path.ts` validates every `next` value, and `app/auth/confirm/route.ts`
+uses it too: that parameter arrives in a URL, and honouring it unchecked turns the
+page into an open redirect.
+
 ## Scripts
 
 | Command         | Description                |

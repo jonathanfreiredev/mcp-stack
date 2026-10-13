@@ -34,3 +34,12 @@ export const resetPasswordSchema = z.object({
     message: "Confirm Password must be at least 8 characters long",
   }),
 });
+
+/**
+ * Google sign-in asks the user for nothing, but the page it started from is
+ * worth carrying through so the browser can return there. The consent screen
+ * depends on it.
+ */
+export const googleSignInSchema = z.object({
+  next: z.string().optional(),
+});

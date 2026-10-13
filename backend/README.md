@@ -407,6 +407,10 @@ A client needs nothing but the URL: it reads the metadata from the 401 challenge
 registers itself with Supabase (dynamic client registration) and the user approves
 the access once. Point Claude Code at `http://localhost:8001/mcp`.
 
+The screen the user approves on lives in the frontend, at
+`frontend/app/oauth/consent` — which is what Supabase's **Authorization Path**
+has to point at.
+
 `stateless_http` is on (`app/mcp/main.py`) because MCP clients do not forward
 cookies, so a load balancer cannot pin them to the instance holding their session.
 Without it the server only works as a single instance.
