@@ -35,13 +35,19 @@ import {
 } from "../ui/field";
 import { Input } from "../ui/input";
 import { ChangePasswordForm } from "./change-password-form";
+import { ConnectedAppsCard } from "./connected-apps-card";
 import { DeleteAccountCard } from "./delete-account-card";
+import type { ConnectedAppsResult } from "@/server/oauth/oauth.lib";
 
 export const ProfileForm = ({
   user,
+  connectedApps,
   className,
   ...props
-}: React.ComponentProps<"div"> & { user: { name: string; email: string } }) => {
+}: React.ComponentProps<"div"> & {
+  user: { name: string; email: string };
+  connectedApps: ConnectedAppsResult;
+}) => {
   const router = useRouter();
 
   const [isChangePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -180,6 +186,8 @@ export const ProfileForm = ({
           </Dialog>
         </CardFooter>
       </Card>
+
+      <ConnectedAppsCard result={connectedApps} />
 
       <DeleteAccountCard />
     </div>

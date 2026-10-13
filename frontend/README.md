@@ -128,11 +128,24 @@ user's own access instead of implying a narrower one.
 - An already-approved client comes back from `getAuthorizationDetails` without
   an `authorization_id`; the page then forwards straight to the client.
 
-Two gaps, both deliberate for now. `next` is not threaded through sign-up or
+One gap remains, deliberate for now: `next` is not threaded through sign-up or
 email verification, so a visitor without an account has to finish signing up and
-then start the flow again. And there is no UI to list or revoke connected apps —
-the SDK exposes `supabase.auth.oauth.listGrants()` and `revokeGrant()` for that
-whenever it is worth adding.
+then start the flow again.
+
+## Connected applications
+
+`components/auth/connected-apps-card.tsx`, on the profile page, lists what the
+user has approved (`server/oauth/oauth.lib.ts`) and disconnects it
+(`server/oauth/oauth.actions.ts`).
+
+Revoking removes the user's **grant**, not the client: the application keeps its
+registration and has to ask again, which is why disconnecting does not ask for
+the password the way the danger zone does. The access token it already holds
+stays valid until it expires — verification is stateless, so there is nothing to
+invalidate — which is the normal JWT trade-off rather than a bug.
+
+When the grants cannot be read (Supabase unreachable, or its OAuth server turned
+off) the section says so instead of claiming nothing is connected.
 
 `lib/safe-next-path.ts` validates every `next` value, and `app/auth/confirm/route.ts`
 uses it too: that parameter arrives in a URL, and honouring it unchecked turns the

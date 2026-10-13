@@ -233,7 +233,7 @@ Authentication (signup, login, verification, reset) is handled by **Supabase Aut
 5. The backend **verifies** the token against Supabase's **JWKS** (`iss`, `aud`, `exp`) and **provisions a local profile** keyed by the token's `sub` the first time it sees the user.
 6. Supabase sends verification and password-reset emails; `frontend/app/auth/confirm/route.ts` handles the links and the OAuth callback.
 7. **Account deletion** is a hard delete on both sides: the backend removes the local profile and the frontend then deletes the Supabase identity through the admin API. The email is freed, so the same address can sign up again.
-8. **AI agents** authenticate through Supabase's OAuth 2.1 server: the app registers itself with dynamic client registration, the user approves it on the consent screen (`frontend/app/oauth/consent`), and the resulting token is accepted by the **MCP server**. The API refuses those tokens — an agent can only reach the tools.
+8. **AI agents** authenticate through Supabase's OAuth 2.1 server: the app registers itself with dynamic client registration, the user approves it on the consent screen (`frontend/app/oauth/consent`), and the resulting token is accepted by the **MCP server**. The API refuses those tokens — an agent can only reach the tools. Connected agents are listed on the profile page, where they can be disconnected.
 
 ## Common commands
 
