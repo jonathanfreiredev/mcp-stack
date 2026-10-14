@@ -128,5 +128,12 @@
   }
   html {
     @apply font-sans;
+    /* Surfaces the browser draws itself, carried into the palette. */
+    caret-color: var(--foreground);
+    scrollbar-color: var(--border) transparent;
+  }
+  ::selection {
+    background-color: var(--foreground);
+    color: var(--background);
   }
 }

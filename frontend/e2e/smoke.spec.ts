@@ -3,7 +3,6 @@ import { expect, test } from "@playwright/test";
 test("home page renders", async ({ page }) => {
   await page.goto("/");
 
-  // Scoped to <main>: the header wordmark is also an h1 with the same text.
   await expect(
     page.getByRole("main").getByRole("heading", { name: "MCPStack" }),
   ).toBeVisible();
