@@ -12,7 +12,7 @@ Under the hood it pairs a **Next.js 16** frontend with a **FastAPI** backend on 
 
 ## What you can build
 
-![Identity issuing one access token two ways, a frontend and external agents such as Claude Code, Cursor, opencode or n8n, an MCP server, a FastAPI backend and PostgreSQL, with the token carried along each path](frontend/public/diagram-architecture.png)
+![Identity issuing one access token two ways, a frontend and external agents such as Claude Code, Cursor, opencode or n8n, an MCP server, a FastAPI backend and PostgreSQL, with the token carried along each path](https://res.cloudinary.com/ddjovluur/image/upload/v1791981836/mcp-stack/diagram-architecture_yo10gf.png)
 
 One access token, and two ways to get it: signing in, or approving an agent over OAuth. That one token opens two doors. The API serves your product; the MCP server serves agents, and it runs the same domain services the API runs, so an agent can never reach something your own code would not.
 
@@ -78,7 +78,7 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 │   ├── server/              # Server actions, schemas, session helper
 │   ├── lib/                 # Env validation, Supabase client, safe-action, providers
 │   ├── e2e/                 # Playwright end-to-end tests
-│   ├── public/              # Static assets, including the diagram above
+│   ├── public/              # Static assets
 │   ├── proxy.ts             # Refreshes the Supabase session per request
 │   ├── Dockerfile           # Dev image
 │   └── package.json         # Dependencies (managed with pnpm)
