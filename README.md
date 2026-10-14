@@ -195,7 +195,9 @@ Open http://localhost:3000 and sign up. Supabase sends a verification email (che
 `docker-compose.yml` is a **local development** stack: PostgreSQL plus the API and the web app, with the source mounted and the dev servers running with reload.
 
 ```bash
-cp .env.example .env   # Postgres credentials for the stack
+cp .env.example .env                          # Postgres credentials for the stack
+cp backend/.env.example backend/.env          # what the API reads
+cp frontend/.env.example frontend/.env        # what the web app reads
 docker compose up
 ```
 
@@ -335,4 +337,4 @@ There are 90 backend tests, 67 frontend unit tests and 8 end-to-end tests.
 
 ## License
 
-[MIT](./LICENSE) © 2026 Jonathan Freire
+[MIT](./LICENSE) © 2026 [Jonathan Freire](https://jonathanfreire.com)
