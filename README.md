@@ -1,40 +1,53 @@
 # MCPStack
 
-A full-stack starter template pairing a **Next.js 16** frontend with a **FastAPI** backend, wired together with a complete authentication flow, server actions, and a PostgreSQL database.
+**The production-ready foundation for agent-native SaaS.**
 
-Authentication is delegated to [**Supabase Auth**](https://supabase.com/docs/guides/auth) (OAuth 2.1 / OIDC): it owns credentials, email verification, social login and sessions, while the FastAPI backend acts as a **resource server** that verifies the access token against Supabase's JWKS. The template ships with signup, login, email verification, password reset, profile editing and password change as working examples, so you can start building features on top of a real, end-to-end setup instead of a blank page.
+[![Backend](https://github.com/jonathanfreiredev/mcp-stack/actions/workflows/backend.yml/badge.svg)](https://github.com/jonathanfreiredev/mcp-stack/actions/workflows/backend.yml)
+[![Frontend](https://github.com/jonathanfreiredev/mcp-stack/actions/workflows/frontend.yml/badge.svg)](https://github.com/jonathanfreiredev/mcp-stack/actions/workflows/frontend.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+
+A full-stack template where **AI agents are first-class users of your product**. It ships the part that is tedious to get right: identity, an authorization layer, and an **MCP server** any MCP client can walk through, behind a consent screen the user approves.
+
+Under the hood it pairs a **Next.js 16** frontend with a **FastAPI** backend on **PostgreSQL**, and delegates authentication to [**Supabase Auth**](https://supabase.com/docs/guides/auth) (OAuth 2.1 / OIDC). Supabase owns credentials, email verification, social login and sessions, while the backend is a **resource server** that verifies the access token against the project's JWKS. Signup, login, email verification, password reset, profile editing and password change all ship as working examples, so you start from a real end-to-end setup instead of a blank page.
+
+## What you can build
+
+![Identity issuing one access token two ways, a frontend and external agents such as Claude Code, Cursor, opencode or n8n, an MCP server, a FastAPI backend and PostgreSQL, with the token carried along each path](frontend/public/diagram-architecture.png)
+
+One access token, and two ways to get it: signing in, or approving an agent over OAuth. That one token opens two doors. The API serves your product; the MCP server serves agents, and it runs the same domain services the API runs, so an agent can never reach something your own code would not.
+
+The difference between the two tokens is a single claim. Without `client_id` the token came from your own sign-in, and it can call the API and the MCP. With `client_id` it was issued to an agent: the API turns it away and only the tools answer. That is the whole separation between human and agent traffic, and it lives in one place.
+
+The repository ships one tool, `whoami`, as a working example of that path. What you publish on top is yours.
+
+## Quickstart
+
+```bash
+cp .env.example .env   # Postgres credentials for the local stack
+docker compose up
+```
+
+That brings up PostgreSQL, the API, the MCP server and the web app. To watch the loop close, point an MCP client at the server:
+
+1. Add `http://localhost:8001/mcp` as a remote MCP server in Claude Code, opencode, Cursor, n8n or anything else that speaks MCP.
+2. Call the `whoami` tool. Your client opens a consent screen in the browser.
+3. Approve it, and the tool answers with the profile behind the token.
+
+Prerequisites, the manual path without Docker and every environment variable are below.
 
 ## Tech stack
 
-| Layer      | Technology                                                                        |
-| ---------- | --------------------------------------------------------------------------------- |
-| Frontend   | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Motion  |
-| Forms      | React Hook Form, Zod, next-safe-action                                             |
-| Auth       | Supabase Auth (`@supabase/ssr`), asymmetric JWTs verified via JWKS                 |
-| Backend    | FastAPI, SQLAlchemy 2 (async), PyJWT, Pydantic v2                                   |
-| Database   | PostgreSQL, Alembic migrations                                                     |
+| Layer             | The value                                                                    | Stack                                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **Product UI**    | Server-rendered pages, with one schema validating each input on both sides.  | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui, Motion, React Hook Form, Zod, next-safe-action |
+| **Identity**      | Credentials, sessions and agent authorization, all delegated.                | Supabase Auth (OIDC), `@supabase/ssr`, asymmetric JWTs verified against JWKS                                             |
+| **API**           | One validated HTTP door into the domain, async end to end.                   | FastAPI, Pydantic v2, SQLAlchemy 2 (async), asyncpg, PyJWT                                                               |
+| **Agent access**  | A second door into the same domain, user approval included.                  | FastMCP, MCP over streamable HTTP, OAuth 2.1 consent                                                                     |
+| **Data**          | The tenant model, versioned and reversible.                                  | PostgreSQL 17, Alembic                                                                                                   |
+| **Observability** | Logs you can read in dev and ship as JSON in production.                     | structlog, request id and access log middleware                                                                          |
+| **Engineering**   | Nothing merges unlinted or untested, and the whole loop runs in one command. | pytest, Vitest, Playwright, MSW, ruff, ESLint, Prettier, Docker Compose, GitHub Actions                                  |
 
-## Architecture
-
-```
-┌──────────────────────────┐        ┌──────────────────────────┐        ┌───────────────┐
-│  Browser                 │        │  Next.js (server)        │        │  FastAPI      │
-│                          │        │                          │        │               │
-│  React components  ──────┼───────▶│  server actions  ────────┼───────▶│  /v1/users/me │
-│  (client)                │        │  (@supabase/ssr)         │        │  verify JWT   │
-│                          │◀───────┼──  Supabase session      │◀───────┼──  JWKS       │
-│  session via getSession  │        │  cookies                 │        │  SQLAlchemy   │
-└──────────────────────────┘        └────────────┬─────────────┘        └──────┬────────┘
-                                                  │                             │
-                                       ┌──────────▼──────────┐         ┌────────▼────────┐
-                                       │  Supabase Auth       │         │  PostgreSQL     │
-                                       │  (credentials, JWT)  │         │  (your data)    │
-                                       └──────────────────────┘         └─────────────────┘
-```
-
-The browser authenticates against Supabase through Next.js server actions; the session is a cookie managed by `@supabase/ssr`. The browser never talks to FastAPI directly: the Next.js server calls it with the Supabase access token, and the backend verifies that token against Supabase's JWKS before touching the database.
-
-Domain data is **multi-tenant**: every row belongs to an organization, and access is resolved through the caller's membership in it. See "Organizations and tenancy" in the [backend README](backend/README.md). The API accepts only first-party session tokens; tokens issued to an AI agent are turned away.
+Domain data is **multi-tenant**: every row belongs to an organization, and access is resolved through the caller's membership in it. That is what makes the authorization layer meaningful. See "Organizations and tenancy" in the [backend README](backend/README.md).
 
 ## Repository structure
 
@@ -43,6 +56,7 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 ├── backend/                 # FastAPI application (resource server)
 │   ├── app/
 │   │   ├── auth/            # JWT verification + bearer dependency
+│   │   ├── authz/           # Roles, permissions and the policy table
 │   │   ├── users/           # Profile model, schemas, JIT provisioning, /users router
 │   │   ├── organizations/   # Tenant model (organization + membership), /organizations router
 │   │   ├── mcp/             # MCP server for AI agents (runs as its own service)
@@ -63,6 +77,8 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 │   ├── components/          # UI + auth components (shadcn/ui based)
 │   ├── server/              # Server actions, schemas, session helper
 │   ├── lib/                 # Env validation, Supabase client, safe-action, providers
+│   ├── e2e/                 # Playwright end-to-end tests
+│   ├── public/              # Static assets, including the diagram above
 │   ├── proxy.ts             # Refreshes the Supabase session per request
 │   ├── Dockerfile           # Dev image
 │   └── package.json         # Dependencies (managed with pnpm)
@@ -142,7 +158,7 @@ Three files supply the environment, and each has one job:
 
 Because the containers build their `DATABASE_URL` from the root `.env`, **`backend/.env` must carry the same password** if you also want to run Alembic or pytest from the host. `POSTGRES_PASSWORD` is required on purpose — the compose file gives it no default — so a missing `.env` fails loudly instead of silently picking one.
 
-The stack also runs the **MCP server** on port 8001: the door AI agents such as Claude Code, Cursor or ChatGPT come through. It is a separate service that shares the domain and the token verification with the API — see the [MCP server](backend/README.md#mcp-server) section of the backend README.
+The stack also runs the **MCP server** on port 8001: the door AI agents such as Claude Code, Cursor, opencode or n8n come through. It is a separate service that shares the domain and the token verification with the API — see the [MCP server](backend/README.md#mcp-server) section of the backend README.
 
 Deployment is not handled here: the frontend goes to Vercel (which builds it natively) and the backend to its own service. The `backend/Dockerfile` also has a production stage if you deploy it as a container.
 
@@ -197,7 +213,7 @@ Environment variables in the frontend are validated at startup with `@t3-oss/env
 
 ## API reference
 
-All endpoints live on the FastAPI backend. Protected routes expect an `Authorization: Bearer <supabase_access_token>` header.
+All endpoints live on the FastAPI backend. Protected routes expect an `Authorization: Bearer <supabase_access_token>` header. The browser never calls it directly: the Next.js server holds the session in a cookie and forwards the access token on the user's behalf.
 
 | Method | Path                             | Auth | Description                                             |
 | ------ | -------------------------------- | :--: | ------------------------------------------------------- |
@@ -262,6 +278,8 @@ GitHub Actions runs two path-filtered workflows, so a change in one app does not
 
 - `.github/workflows/backend.yml` — lints, checks formatting, applies migrations and runs the tests against a PostgreSQL service container.
 - `.github/workflows/frontend.yml` — lints, type-checks, runs the unit tests, builds the app and runs the Playwright end-to-end tests.
+
+There are 83 backend tests, 67 frontend unit tests and 5 end-to-end tests.
 
 ## License
 
