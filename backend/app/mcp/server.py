@@ -12,7 +12,6 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.mcp.auth import SupabaseTokenVerifier
-from app.mcp.tools import register_tools
 from app.settings import settings
 
 auth = SupabaseProvider(
@@ -25,8 +24,6 @@ auth = SupabaseProvider(
 )
 
 mcp = FastMCP(name="nextjs-fastapi", auth=auth)
-
-register_tools(mcp)
 
 
 @mcp.custom_route("/health", methods=["GET"])

@@ -57,7 +57,6 @@ backend/
 │   └── main.py                # FastAPI app, routers, CORS
 ├── alembic/                   # Migrations (async env.py)
 ├── alembic.ini
-├── start-database.sh          # Starts a local PostgreSQL container
 ├── pyproject.toml
 └── .python-version            # 3.14
 ```
@@ -66,7 +65,7 @@ backend/
 
 - Python **3.14+**
 - [uv](https://docs.astral.sh/uv/)
-- Docker or Podman (for the local database), or a PostgreSQL server you can point `DATABASE_URL` at
+- **Docker** or **Podman** for the containerized stack (the database, API and web app), or a PostgreSQL server you can point `DATABASE_URL` at
 - A **Supabase project** (see the [frontend README](../frontend/README.md) for the auth setup)
 
 ## Setup
@@ -80,14 +79,11 @@ uv sync
 # Create your environment file
 cp .env.example .env
 
-# Start PostgreSQL
-./start-database.sh
-
 # Apply migrations
 uv run alembic upgrade head
 ```
 
-`start-database.sh` reads `DATABASE_URL` from `.env`, extracts the database name, port, and password, and runs a matching `postgres` container. If the password is still the default `password`, it offers to generate a random one and updates `.env` for you.
+PostgreSQL comes from the repository's `docker-compose.yml` (see [Run with Docker](../README.md#run-with-docker)), so `DATABASE_URL` must point at the host-mapped port (`localhost:5432`).
 
 ## Environment variables
 
@@ -195,8 +191,8 @@ uv run pytest tests/integration   # needs the test database
 The integration tests use a dedicated PostgreSQL database. Create it once, next to your development one:
 
 ```bash
-# the container name is "<db_name>-postgres" (see start-database.sh)
-docker exec <db_name>-postgres createdb -U postgres app_test
+# from the repository root, against the running postgres service
+docker compose exec postgres createdb -U postgres app_test
 ```
 
 By default they connect to `app_test` on the same host as `DATABASE_URL`; set `TEST_DATABASE_URL` to point somewhere else. Each test creates the tables before it runs and drops them afterwards, so it never touches your development data.
@@ -471,9 +467,9 @@ A tool is a thin adapter, and the steps are short. `whoami` and `ask_the_user` i
 4. If it needs to ask the user something, follow `ask_the_user`. On this server
    asking means *returning* on one round and resuming on the next; the paragraph
    above on `stateless_http` is why.
-5. Add it to `register_tools`, the list the server publishes. Registration is
-   explicit rather than a decorator at import time, so the server module owns the
-   list and the tools hold no reference back to it.
+5. Decorate it with `@mcp.tool`. The decorator registers the tool at import time
+   and hands the function back unchanged, so it stays directly callable. Importing
+   `app/mcp/tools.py` — the entrypoint does it — is what runs the decorators.
 
 Two conventions worth keeping:
 

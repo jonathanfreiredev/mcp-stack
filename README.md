@@ -56,7 +56,6 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 │   ├── alembic/             # Database migrations
 │   ├── tests/               # Unit + integration tests
 │   ├── Dockerfile           # Dev image (+ production stage)
-│   ├── start-database.sh    # Local PostgreSQL container helper
 │   └── pyproject.toml       # Dependencies (managed with uv)
 │
 ├── frontend/                # Next.js application
@@ -77,7 +76,7 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 
 - **Node.js** 20+ and **pnpm**
 - **Python** 3.14+ and [**uv**](https://docs.astral.sh/uv/)
-- **Docker** or **Podman** if you want the containerized stack (or a local database via `start-database.sh`)
+- **Docker** or **Podman** for the containerized stack (the database, API and web app)
 - A **Supabase project** (free tier is enough)
 
 ## Getting started
@@ -97,15 +96,14 @@ uv sync
 # Create your environment file and set SUPABASE_URL
 cp .env.example .env
 
-# Start a local PostgreSQL container (reads DATABASE_URL from .env)
-./start-database.sh
-
 # Apply database migrations
 uv run alembic upgrade head
 
 # Run the dev server on http://localhost:8000
 uv run fastapi dev
 ```
+
+The database comes up with the rest of the stack through `docker compose up` — see [Run with Docker](#run-with-docker).
 
 Interactive API docs are available at http://localhost:8000/docs.
 
@@ -143,8 +141,6 @@ Three files supply the environment, and each has one job:
 - **`backend/.env`** and **`frontend/.env`** — what the API and the web app read (`env_file` in `docker-compose.yml`). Only the Docker-internal hostnames (`postgres`, `backend`) are overridden.
 
 Because the containers build their `DATABASE_URL` from the root `.env`, **`backend/.env` must carry the same password** if you also want to run Alembic or pytest from the host. `POSTGRES_PASSWORD` is required on purpose — the compose file gives it no default — so a missing `.env` fails loudly instead of silently picking one.
-
-`backend/start-database.sh` is the alternative to the compose stack: it starts a standalone Postgres container matching `backend/.env`'s `DATABASE_URL`, which is what you want when running the API from the host. It and the compose service both bind port 5432, so run one or the other, not both.
 
 The stack also runs the **MCP server** on port 8001: the door AI agents such as Claude Code, Cursor or ChatGPT come through. It is a separate service that shares the domain and the token verification with the API — see the [MCP server](backend/README.md#mcp-server) section of the backend README.
 

@@ -11,13 +11,14 @@ second place where a permission could be written down and then forgotten.
 
 import uuid
 
-from fastmcp import Context, FastMCP
+from fastmcp import Context
 from fastmcp.server.dependencies import get_access_token
 from mcp.types import ElicitRequest, ElicitRequestFormParams, InputRequiredResult
 from pydantic import BaseModel
 
 from app.auth.claims import parse_claims
 from app.db.session import async_session_maker
+from app.mcp.server import mcp
 from app.users.service import get_or_create_user
 
 QUESTION = "Type any word"
@@ -43,6 +44,7 @@ class UserAnswer(BaseModel):
     answer: str | None = None
 
 
+@mcp.tool
 async def whoami() -> CallerProfile:
     """Return the profile of the user whose token is calling this tool.
 
@@ -61,6 +63,7 @@ async def whoami() -> CallerProfile:
     return CallerProfile(id=user.id, email=user.email, full_name=user.full_name)
 
 
+@mcp.tool
 async def ask_the_user(ctx: Context) -> UserAnswer | InputRequiredResult:
     """Ask the user for a word. The pattern for anything that needs a person.
 
@@ -93,16 +96,6 @@ async def ask_the_user(ctx: Context) -> UserAnswer | InputRequiredResult:
         return UserAnswer(outcome=response.action)
 
     return UserAnswer(outcome="accept", answer=response.content[ANSWER_FIELD])
-
-
-def register_tools(mcp: FastMCP) -> None:
-    """Attach every tool to the server.
-
-    Explicit rather than a decorator at import time, so the server module owns the
-    list of tools and this one holds no reference back to it.
-    """
-    for tool in (whoami, ask_the_user):
-        mcp.add_tool(tool)
 
 
 def _ask_for_text(question: str) -> InputRequiredResult:
