@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Next.js + FastAPI Starter",
-    template: "%s | Next.js + FastAPI Starter",
+    default: "MCPStack",
+    template: "%s | MCPStack",
   },
   description:
     "A full-stack starter pairing Next.js with FastAPI and Supabase Auth.",

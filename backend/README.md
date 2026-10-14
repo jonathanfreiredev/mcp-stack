@@ -1,6 +1,6 @@
 # Backend — FastAPI
 
-The API for the [Next.js + FastAPI Starter](../README.md). It exposes the application's domain data (the user profile) on top of an async SQLAlchemy / PostgreSQL stack.
+The API for the [MCPStack](../README.md). It exposes the application's domain data (the user profile) on top of an async SQLAlchemy / PostgreSQL stack.
 
 Authentication is delegated to [**Supabase Auth**](https://supabase.com/docs/guides/auth), which owns credentials, email verification, social login and sessions. This service is a **resource server**: it verifies the Supabase access token (an asymmetric JWT) against the project's **JWKS** and provisions a local profile the first time it sees a user. It never issues tokens or stores passwords.
 

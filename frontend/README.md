@@ -1,6 +1,6 @@
 # Frontend — Next.js
 
-The web client for the [Next.js + FastAPI Starter](../README.md). It renders the UI, validates forms, and authenticates users with **Supabase Auth** through `@supabase/ssr`. The session lives in cookies managed by the Next.js server; domain data is read from the FastAPI backend.
+The web client for the [MCPStack](../README.md). It renders the UI, validates forms, and authenticates users with **Supabase Auth** through `@supabase/ssr`. The session lives in cookies managed by the Next.js server; domain data is read from the FastAPI backend.
 
 ## Tech stack
 

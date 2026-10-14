@@ -44,7 +44,7 @@ export default async function HomePage() {
                 "from-foreground via-primary bg-linear-to-r to-emerald-400 bg-clip-text text-transparent",
               )}
             >
-              Next.js + FastAPI Starter
+              MCPStack
             </h1>
             <p className="text-muted-foreground mx-auto max-w-2xl text-sm text-pretty sm:text-base md:text-lg">
               A modern full-stack starter template for building web
@@ -65,7 +65,7 @@ export default async function HomePage() {
 
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="https://github.com/jonathanfreiredev/nextjs-fastapi"
+              href="https://github.com/jonathanfreiredev/mcp-stack"
               target="_blank"
               rel="noreferrer"
             >

@@ -17,7 +17,7 @@ export async function Header({ session }: HeaderProps) {
       <div className="flex h-full w-full items-center justify-between">
         <Link href="/" passHref className="flex h-full items-center">
           <h1 className="relative font-semibold text-gray-800">
-            Next.js + FastAPI
+            MCPStack
           </h1>
         </Link>
 

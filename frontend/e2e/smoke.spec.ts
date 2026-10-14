@@ -4,7 +4,7 @@ test("home page renders", async ({ page }) => {
   await page.goto("/");
 
   await expect(
-    page.getByRole("heading", { name: "Next.js + FastAPI Starter" }),
+    page.getByRole("heading", { name: "MCPStack" }),
   ).toBeVisible();
 });
 

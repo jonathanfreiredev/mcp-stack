@@ -15,7 +15,7 @@ export function Footer() {
         <p>
           Released under the{" "}
           <a
-            href="https://github.com/jonathanfreiredev/nextjs-fastapi/blob/main/LICENSE"
+            href="https://github.com/jonathanfreiredev/mcp-stack/blob/main/LICENSE"
             target="_blank"
             rel="noreferrer"
             className="hover:text-foreground underline underline-offset-4"

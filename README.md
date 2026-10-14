@@ -1,4 +1,4 @@
-# Next.js + FastAPI Starter
+# MCPStack
 
 A full-stack starter template pairing a **Next.js 16** frontend with a **FastAPI** backend, wired together with a complete authentication flow, server actions, and a PostgreSQL database.
 
@@ -167,7 +167,7 @@ Read by `docker-compose.yml` for variable substitution, so it is the source of t
 | ------------------- | -------- | -------------------------------------------------------------------- |
 | `POSTGRES_USER`     | No       | Role the container creates (default `postgres`).                     |
 | `POSTGRES_PASSWORD` | Yes      | Password for that role. The containers build `DATABASE_URL` from it. |
-| `POSTGRES_DB`       | No       | Database the container creates (default `nextjs-fastapi`).           |
+| `POSTGRES_DB`       | No       | Database the container creates (default `mcpstack`).                 |
 
 ### `backend/.env`
 
