@@ -11,9 +11,31 @@ from typing import Annotated
 from fastapi import Depends, HTTPException, status
 
 from app.auth.claims import TokenClaims
-from app.auth.dependencies import get_token_claims
+from app.auth.dependencies import get_optional_token_claims, get_token_claims
 from app.users.dependencies import get_current_user
 from app.users.models import User
+
+
+async def get_optional_first_party_token(
+    caller: Annotated[tuple[str, TokenClaims] | None, Depends(get_optional_token_claims)],
+) -> str | None:
+    """The caller's raw token when the REST door accepts them, or ``None``.
+
+    The same rule as :func:`get_first_party_user`, for the one endpoint that has to
+    answer an anonymous caller: this API never acts on a token issued to an OAuth
+    client, not even to relay it to the MCP server on the caller's behalf.
+    """
+    if caller is None:
+        return None
+
+    token, claims = caller
+    if claims.client_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This token was issued to an OAuth client and cannot be used with this API.",
+        )
+
+    return token
 
 
 async def get_first_party_user(

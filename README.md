@@ -75,6 +75,9 @@ Then turn `mcp-stack` on in Cursor's MCP settings; it opens the browser to sign 
 
 Add an MCP Client Tool node under an AI Agent and paste `http://localhost:8001/mcp` as its endpoint, with the transport set to HTTP Streamable, which is the one this server serves. For authentication, pick OAuth2 and leave Dynamic Client Registration on, so n8n registers itself and opens the same consent screen. See [n8n MCP Client Tool](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolmcp/).
 
+The landing runs this same agent in the browser, so you can watch the door refuse an
+anonymous call before you install anything.
+
 ## Tech stack
 
 | Layer             | The value                                                                    | Stack                                                                                                                    |
@@ -86,6 +89,7 @@ Add an MCP Client Tool node under an AI Agent and paste `http://localhost:8001/m
 | **Data**          | The tenant model, versioned and reversible.                                  | PostgreSQL 17, Alembic                                                                                                   |
 | **Observability** | Logs you can read in dev and ship as JSON in production.                     | structlog, request id and access log middleware                                                                          |
 | **Engineering**   | Nothing merges unlinted or untested, and the whole loop runs in one command. | pytest, Vitest, Playwright, MSW, ruff, ESLint, Prettier, Docker Compose, GitHub Actions                                  |
+| **Playground**    | See the agent work in the browser, with no client to install.                | LangGraph, MCPAdapter as the client                                                                                      |
 
 Domain data is **multi-tenant**: every row belongs to an organization, and access is resolved through the caller's membership in it. That is what makes the authorization layer meaningful. See "Organizations and tenancy" in the [backend README](backend/README.md).
 
@@ -267,6 +271,7 @@ All endpoints live on the FastAPI backend. Protected routes expect an `Authoriza
 | GET    | `/v1/organizations/{id}`         |  ✓   | Read one organization the caller belongs to             |
 | PATCH  | `/v1/organizations/{id}`         |  ✓   | Rename an organization (owner only)                     |
 | GET    | `/v1/organizations/{id}/members` |  ✓   | List the members of an organization                     |
+| POST   | `/v1/demo/run`                   |      | Run the playground agent once (public on purpose)       |
 
 The application API is versioned under `/v1`. The health checks stay unversioned so a future `/v2` never breaks orchestrators.
 

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # protected resource in the OAuth discovery document, so it must be the URL
     # clients use, not a container-internal hostname.
     mcp_base_url: str = "http://localhost:8001"
+    # Where this service reaches the MCP server as a client (the playground). It
+    # is a different address from ``mcp_base_url`` inside compose, where the
+    # service answers to its own name rather than to localhost.
+    mcp_internal_url: str = "http://localhost:8001"
     # Comma-separated list of browser origins allowed to call the API. Set the
     # real frontend domain(s) in production.
     cors_origins: str = "http://localhost:3000"
@@ -35,6 +39,11 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         """Allowed browser origins, split from the comma-separated setting."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def mcp_internal_endpoint(self) -> str:
+        """The full URL of the MCP endpoint this service calls as a client."""
+        return f"{self.mcp_internal_url.rstrip('/')}/mcp"
 
     @property
     def supabase_issuer(self) -> str:

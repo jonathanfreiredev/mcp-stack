@@ -43,6 +43,11 @@ backend/
 │   │   ├── auth.py            # Verifies MCP tokens with app.auth.verifier
 │   │   ├── tools.py           # The tools, and their registration
 │   │   └── main.py            # ASGI entrypoint (uvicorn app.mcp.main:app)
+│   ├── demo/
+│   │   ├── graph.py           # The agent loop, and the scripted decisions
+│   │   ├── tools.py           # The tools the agent carries itself
+│   │   ├── runner.py          # One run: a refusal at the door vs a fault
+│   │   └── router.py          # POST /demo/run, public on purpose
 │   ├── health/
 │   │   └── router.py          # /health liveness + /health/ready readiness
 │   ├── middleware/
@@ -442,9 +447,8 @@ client for anything. `ctx.elicit()`, sampling and roots all fail with
 `NoBackChannelError`. Asking the user therefore has to go the other way — the tool
 returns the request, the call ends, and the client calls again with the answer,
 which is what the protocol's 2026-07-28 era introduced for exactly this case.
-`ask_the_user` in `app/mcp/tools.py` is that pattern to copy. A client that
-negotiated an older era cannot be asked at all, unless the client can be told to
-probe for the modern one.
+A client that negotiated an older era cannot be asked at all, unless the client
+can be told to probe for the modern one.
 
 This is not a workaround for our configuration. The same revision removed the
 back-channel from the protocol and deprecated the features that leaned on it —
@@ -453,8 +457,8 @@ safe one to build on. The round-trip is how asking will be done from here.
 
 ### Adding a tool
 
-A tool is a thin adapter, and the steps are short. `whoami` and `ask_the_user` in
-`app/mcp/tools.py` are the two patterns to copy from.
+A tool is a thin adapter, and the steps are short. `whoami` in `app/mcp/tools.py`
+is the pattern to copy from.
 
 1. Write the function and give it a return type. That type is the contract: a
    Pydantic model becomes the tool's `outputSchema`, so the caller gets data it
@@ -464,8 +468,8 @@ A tool is a thin adapter, and the steps are short. `whoami` and `ask_the_user` i
    lying.
 3. Put no rule in the tool: call a domain service and let it check the role. That
    is the only authorization there is — see "What each layer protects".
-4. If it needs to ask the user something, follow `ask_the_user`. On this server
-   asking means *returning* on one round and resuming on the next; the paragraph
+4. If it needs to ask the user something, asking means *returning* on one round and
+   resuming on the next, because there is no back-channel to ask on: the paragraph
    above on `stateless_http` is why.
 5. Decorate it with `@mcp.tool`. The decorator registers the tool at import time
    and hands the function back unchanged, so it stays directly callable. Importing
@@ -500,6 +504,54 @@ Client Registration** and towards **Client ID Metadata Documents**. That
 registration flow belongs to Supabase's OAuth server, not to this code: keeping up
 means watching Supabase, not changing anything here. It is written down because it
 is the kind of thing that looks like a bug when it starts happening.
+
+## Playground
+
+The playground is the fourth way into this domain, and the only client you can watch
+from a browser. It sits at the end of the landing, and it exists so a visitor can see
+an agent reach their own data with their own account, without installing a client
+first.
+
+It runs a real agent, built the way the LangGraph quickstart builds one
+(`app/demo/graph.py`): a state that carries messages, a node that decides which tool
+runs next, and a node that runs it. The loop is the library's own pieces — `ToolNode`
+runs the tools and `tools_condition` decides whether there is another round — so
+there is no hand-rolled dispatcher to keep in step with them. Both demo modes drive
+that same graph and only the decider changes. In the scripted mode the decisions are
+a list and no model is called, which the page says out loud, so nobody mistakes the
+trace for a model thinking.
+
+LangGraph and the MCP adapter are core dependencies, because the playground runs
+inside the API and goes out to the server on every run. The model provider is not,
+because the mode that needs one is optional. That split is the reason the dependency
+question was worth asking.
+
+The agent carries three tools. Two live in the agent's own code and need nobody's
+permission: one reads the clock, and one stops the run to ask the visitor before anything
+goes out. The third is the server's, and where the run gets it depends on the caller: with
+a token it lists the catalogue with `MCPAdapter` and hands the graph whatever the server
+publishes, and without one there is no catalogue to ask for, so it calls the tool the plan
+names and the door answers. The name appears in the plan either way; only the description
+comes from the server.
+
+Asking is where the graph keeps its place. The tool calls `interrupt`, which stops the run
+and hands the question to whoever is looking at the page; the graph saves where it got to,
+the answer comes back on the next request with the id of the same run, and the run carries
+on from there. That checkpointer is in memory (`app/demo/runner.py`), which is what one
+process can offer: a deployment serving many runs at once would keep those somewhere it
+can expire them.
+
+- `POST /v1/demo/run` is **public**, which is unusual for this API and deliberate.
+  Anonymous is the interesting case: the run asks the visitor to approve the call that
+  goes out, and then the server shows its catalogue to nobody without a token, so the
+  tool is called by name and the door refuses it. The page shows that refusal next to a
+  way to sign in. A route that demanded a token would hide the half of the story worth
+  telling.
+- The browser never sees the token. The Next.js server holds the session and forwards
+  it here, and this service forwards it to the MCP server. The only thing the endpoint
+  does with a token is pass it on; no domain rule runs behind it.
+- The usual rules still hold: a token that does not verify is a 401, and a token
+  issued to an OAuth client is rejected, because this API never acts on one.
 
 ## Conventions
 

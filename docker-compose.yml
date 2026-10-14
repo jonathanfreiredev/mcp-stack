@@ -47,6 +47,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?required, see .env.example}@postgres:5432/${POSTGRES_DB:-mcpstack}
       ENV: development
       FRONTEND_URL: http://localhost:3000
+      # Inside the network the MCP server answers to its service name. The
+      # playground calls it from here, so this is not the public MCP_BASE_URL.
+      MCP_INTERNAL_URL: http://mcp:8001
     # Mount the source, but keep the image's Linux virtualenv untouched. The
     # one-shot service needs it as much as the API does: without the mount it
     # runs the migrations baked into the image at build time, so a new migration

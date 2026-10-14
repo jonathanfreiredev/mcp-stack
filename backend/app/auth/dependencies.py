@@ -32,3 +32,19 @@ async def get_token_claims(
         return parse_claims(payload)
     except InvalidTokenError, InvalidClaims:
         raise _UNAUTHORIZED from None
+
+
+async def get_optional_token_claims(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
+) -> tuple[str, TokenClaims] | None:
+    """The caller's raw token and its claims, or ``None`` when they sent none.
+
+    For the endpoints where an anonymous caller is a valid caller and the same
+    request is meant to behave differently depending on whether a token is
+    present. Verification is shared with ``get_token_claims``, so an invalid token
+    is rejected exactly as it is everywhere else.
+    """
+    if credentials is None:
+        return None
+
+    return credentials.credentials, await get_token_claims(credentials)
