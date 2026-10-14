@@ -29,11 +29,51 @@ docker compose up
 
 That brings up PostgreSQL, the API, the MCP server and the web app. To watch the loop close, point an MCP client at the server:
 
-1. Add `http://localhost:8001/mcp` as a remote MCP server in Claude Code, opencode, Cursor, n8n or anything else that speaks MCP.
+1. Add the server to your client. The four clients this project documents are in [Connect your agent](#connect-your-agent) below.
 2. Call the `whoami` tool. Your client opens a consent screen in the browser.
 3. Approve it, and the tool answers with the profile behind the token.
 
 Prerequisites, the manual path without Docker and every environment variable are below.
+
+## Connect your agent
+
+The MCP server listens on `http://localhost:8001/mcp`, and each client is told about it a different way. These are the four this project documents. Whichever you pick, the first call opens a consent screen in the browser, and the token that comes back can only reach the tools.
+
+### opencode
+
+```bash
+opencode mcp add mcp-stack --global --url http://localhost:8001/mcp
+```
+
+Run it in your terminal. Drop `--global` to register the server for this project only, then run `/mcps`, pick `mcp-stack` and sign in. See [opencode MCP servers](https://opencode.ai/v2/docs/mcp-servers).
+
+### Claude Code
+
+```bash
+claude mcp add --transport http mcp-stack http://localhost:8001/mcp
+```
+
+Run it in your terminal before you start Claude Code, then run `/mcp` inside it to sign in. See [Claude Code MCP](https://code.claude.com/docs/en/mcp).
+
+### Cursor
+
+Save this as `.cursor/mcp.json` in the project, or `~/.cursor/mcp.json` to have it in every project:
+
+```json
+{
+  "mcpServers": {
+    "mcp-stack": {
+      "url": "http://localhost:8001/mcp"
+    }
+  }
+}
+```
+
+Then turn `mcp-stack` on in Cursor's MCP settings; it opens the browser to sign in. See [Cursor MCP](https://cursor.com/en-US/docs/mcp).
+
+### n8n
+
+Add an MCP Client Tool node under an AI Agent and paste `http://localhost:8001/mcp` as its endpoint, with the transport set to HTTP Streamable, which is the one this server serves. For authentication, pick OAuth2 and leave Dynamic Client Registration on, so n8n registers itself and opens the same consent screen. See [n8n MCP Client Tool](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolmcp/).
 
 ## Tech stack
 

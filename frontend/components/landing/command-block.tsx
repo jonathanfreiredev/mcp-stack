@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import { useReducedMotion } from "motion/react";
 
-import { Button } from "@/components/ui/button";
+import { CopyButton } from "@/components/landing/copy-button";
 
 /** Two lines, so the block stays readable at the width of the hero copy. */
 const COMMAND = [
@@ -14,9 +13,6 @@ const COMMAND = [
 
 const TYPING_INTERVAL_MS = 16;
 const TYPING_STEP = 2;
-const COPIED_FEEDBACK_MS = 1800;
-
-type CopyState = "idle" | "copied" | "error";
 
 /**
  * The command, offered in the form it is actually used: typeable and copyable.
@@ -27,9 +23,8 @@ type CopyState = "idle" | "copied" | "error";
  * while the animation runs.
  */
 export function CommandBlock() {
-  const prefersReducedMotion = useReducedMotion();
   const [typed, setTyped] = useState("");
-  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     // Reduced motion takes the same path with an instant step, so the command
@@ -52,34 +47,9 @@ export function CommandBlock() {
 
   const isTyping = typed.length < COMMAND.length;
 
-  async function copy() {
-    if (!navigator.clipboard) {
-      setCopyState("error");
-      window.setTimeout(() => setCopyState("idle"), COPIED_FEEDBACK_MS);
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(COMMAND);
-      setCopyState("copied");
-    } catch {
-      // Denied permission or an insecure context. Say so instead of pretending.
-      setCopyState("error");
-    }
-
-    window.setTimeout(() => setCopyState("idle"), COPIED_FEEDBACK_MS);
-  }
-
-  const label =
-    copyState === "copied"
-      ? "Copied"
-      : copyState === "error"
-        ? "Copy failed"
-        : "Copy the commands";
-
   return (
     <div className="border-border relative rounded-xl border p-5">
-      <div className="flex items-start justify-between gap-6">
+      <div className="flex items-start justify-between gap-4">
         <pre
           aria-hidden="true"
           className="min-w-0 font-mono text-xs leading-6 break-words whitespace-pre-wrap sm:text-sm"
@@ -92,23 +62,11 @@ export function CommandBlock() {
 
         <span className="sr-only">{COMMAND}</span>
 
-        <motion.div whileTap={{ scale: 0.94 }}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={copy}
-            aria-label={label}
-            title={label}
-            className="-mt-1 shrink-0"
-          >
-            {copyState === "copied" ? (
-              <Check className="size-4" />
-            ) : (
-              <Copy className="size-4" />
-            )}
-          </Button>
-        </motion.div>
+        <CopyButton
+          text={COMMAND}
+          idleLabel="Copy the commands"
+          className="-mt-1 shrink-0"
+        />
       </div>
     </div>
   );
