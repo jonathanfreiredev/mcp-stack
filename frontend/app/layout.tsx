@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s | MCPStack",
   },
   description:
-    "A full-stack starter pairing Next.js with FastAPI and Supabase Auth.",
+    "The production-ready foundation for agent-native SaaS: identity, permissions and the MCP server your agents talk to, already wired.",
 };
 
 export default function RootLayout({

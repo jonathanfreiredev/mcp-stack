@@ -2,9 +2,8 @@
 
 State that carries messages, a node that decides what to call, a node that calls it,
 and an edge back to the decision. It differs from the quickstart in two things: the
-decisions are written down instead of asked of a model, and the graph keeps its place
-so a tool can stop the run and wait for an answer. Swap the deciding node for one that
-calls a model and the loop is an agent.
+decisions are written down instead of asked of a model, so a run needs no key, and the
+graph keeps its place so a tool can stop the run and wait for an answer.
 
 The loop is made of the library's own pieces — ``ToolNode`` runs the tools and
 ``tools_condition`` decides whether there is another round — so there is no
@@ -32,6 +31,7 @@ class AgentState(MessagesState):
 
     approval: str | None
 
+
 # What the agent is asked to do, in order: the clock, the question, and the server. The
 # question comes before the call that goes out, which is where asking belongs, and it
 # means an anonymous visitor gets to answer one too.
@@ -58,9 +58,7 @@ def decide(state: AgentState) -> dict[str, Any]:
         # that it was going to lean on.
         return {"messages": [AIMessage(content="Stopped: the answer was no.")]}
 
-    if any(
-        isinstance(message, ToolMessage) and message.status == "error" for message in messages
-    ):
+    if any(isinstance(message, ToolMessage) and message.status == "error" for message in messages):
         return {"messages": [AIMessage(content="Stopped: a tool failed.")]}
 
     answered = sum(isinstance(message, ToolMessage) for message in messages)

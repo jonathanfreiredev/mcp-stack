@@ -110,9 +110,7 @@ def _trace(messages: list[AnyMessage], server: set[str]) -> list[DemoToolCall]:
         if isinstance(message, AIMessage)
         for call in message.tool_calls
     }
-    answered = {
-        message.tool_call_id for message in messages if isinstance(message, ToolMessage)
-    }
+    answered = {message.tool_call_id for message in messages if isinstance(message, ToolMessage)}
 
     trace = []
     for message in messages:
@@ -168,9 +166,7 @@ def _result(message: ToolMessage) -> dict[str, Any]:
 def _as_data(content: Any) -> dict[str, Any]:
     """A tool's answer as the block of data the page renders."""
     if isinstance(content, list):
-        content = " ".join(
-            block.get("text", "") for block in content if isinstance(block, dict)
-        )
+        content = " ".join(block.get("text", "") for block in content if isinstance(block, dict))
 
     if isinstance(content, str):
         try:

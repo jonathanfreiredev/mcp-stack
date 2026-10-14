@@ -5,10 +5,15 @@ import { useReducedMotion } from "motion/react";
 
 import { CopyButton } from "@/components/landing/copy-button";
 
-/** Two lines, so the block stays readable at the width of the hero copy. */
+/**
+ * Three lines, so the block stays readable at the width of the hero copy. All three
+ * are needed: `docker-compose.yml` wants both app environment files to exist, so
+ * copying only the stack's own leaves `docker compose up` failing on a fresh clone.
+ */
 const COMMAND = [
-  "git clone https://github.com/jonathanfreiredev/mcp-stack",
-  "cd mcp-stack && cp .env.example .env && docker compose up",
+  "git clone https://github.com/jonathanfreiredev/mcp-stack && cd mcp-stack",
+  "cp .env.example .env && cp backend/.env.example backend/.env",
+  "cp frontend/.env.example frontend/.env && docker compose up",
 ].join("\n");
 
 const TYPING_INTERVAL_MS = 16;

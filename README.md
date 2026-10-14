@@ -23,11 +23,16 @@ The repository ships one tool, `whoami`, as a working example of that path. What
 ## Quickstart
 
 ```bash
-cp .env.example .env   # Postgres credentials for the local stack
+# One file per app, plus the stack's own: all three have to exist.
+cp .env.example .env
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+
 docker compose up
 ```
 
-That brings up PostgreSQL, the API, the MCP server and the web app. To watch the loop close, point an MCP client at the server:
+That brings up PostgreSQL, the API, the MCP server and the web app. The two apps
+start on the example values, so fill in your Supabase project below to sign in. To watch the loop close, point an MCP client at the server:
 
 1. Add the server to your client. The four clients this project documents are in [Connect your agent](#connect-your-agent) below.
 2. Call the `whoami` tool. Your client opens a consent screen in the browser.
@@ -104,6 +109,7 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 │   │   ├── users/           # Profile model, schemas, JIT provisioning, /users router
 │   │   ├── organizations/   # Tenant model (organization + membership), /organizations router
 │   │   ├── mcp/             # MCP server for AI agents (runs as its own service)
+│   │   ├── demo/            # The playground agent (LangGraph, MCPAdapter)
 │   │   ├── health/          # Liveness + readiness probes
 │   │   ├── middleware/      # Request id + structured access log
 │   │   ├── db/              # Async engine, session, base model
@@ -118,7 +124,7 @@ Domain data is **multi-tenant**: every row belongs to an organization, and acces
 │
 ├── frontend/                # Next.js application
 │   ├── app/                 # App Router pages, layouts, confirm + OAuth consent routes
-│   ├── components/          # UI + auth components (shadcn/ui based)
+│   ├── components/          # UI, auth and playground components (shadcn/ui based)
 │   ├── server/              # Server actions, schemas, session helper
 │   ├── lib/                 # Env validation, Supabase client, safe-action, providers
 │   ├── e2e/                 # Playwright end-to-end tests
@@ -240,6 +246,7 @@ Read by `docker-compose.yml` for variable substitution, so it is the source of t
 | `LOG_LEVEL`             | No       | Minimum level for the application logs (default `INFO`).                     |
 | `FRONTEND_URL`          | No       | Base URL of the frontend, used for redirects.                                |
 | `MCP_BASE_URL`          | No       | Public URL of the MCP server, published in the OAuth discovery document.     |
+| `MCP_INTERNAL_URL`      | No       | Where the playground reaches the MCP server as a client.                    |
 | `CORS_ORIGINS`          | No       | Comma-separated browser origins allowed to call the API (default `http://localhost:3000`). |
 
 ### `frontend/.env`
@@ -271,7 +278,7 @@ All endpoints live on the FastAPI backend. Protected routes expect an `Authoriza
 | GET    | `/v1/organizations/{id}`         |  ✓   | Read one organization the caller belongs to             |
 | PATCH  | `/v1/organizations/{id}`         |  ✓   | Rename an organization (owner only)                     |
 | GET    | `/v1/organizations/{id}/members` |  ✓   | List the members of an organization                     |
-| POST   | `/v1/demo/run`                   |      | Run the playground agent once (public on purpose)       |
+| POST   | `/v1/demo/run`                   |      | Run the playground agent, or continue a stopped run     |
 
 The application API is versioned under `/v1`. The health checks stay unversioned so a future `/v2` never breaks orchestrators.
 
@@ -324,7 +331,7 @@ GitHub Actions runs two path-filtered workflows, so a change in one app does not
 - `.github/workflows/backend.yml` — lints, checks formatting, applies migrations and runs the tests against a PostgreSQL service container.
 - `.github/workflows/frontend.yml` — lints, type-checks, runs the unit tests, builds the app and runs the Playwright end-to-end tests.
 
-There are 83 backend tests, 67 frontend unit tests and 5 end-to-end tests.
+There are 90 backend tests, 67 frontend unit tests and 8 end-to-end tests.
 
 ## License
 

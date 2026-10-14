@@ -30,10 +30,12 @@ frontend/
 │   └── globals.css        # Tailwind + theme tokens
 ├── components/
 │   ├── auth/              # Auth, profile, change-password and verification components
+│   ├── demo/              # The playground: the trace, the approval and its buttons
 │   ├── ui/                # shadcn/ui primitives
 │   └── ...                # Header, avatar menu, sidebar, background
 ├── server/
 │   ├── auth/              # Session helper, server actions, schemas
+│   ├── demo/              # The playground action and the shapes the page reads
 │   └── users/             # Profile + password server actions and schemas
 ├── lib/
 │   ├── env.js             # Validated env vars
@@ -41,6 +43,7 @@ frontend/
 │   ├── supabase/server.ts # Supabase server client (cookies)
 │   ├── supabase/admin.ts  # Supabase admin client (service role; deletes users)
 │   ├── safe-action.ts     # Public / protected action clients
+│   ├── mcp-clients.ts     # The MCP clients the landing documents
 │   └── utils.ts           # cn() helper
 ├── proxy.ts               # Refreshes the Supabase session on every request
 ├── __tests__/             # Vitest tests (unit, integration, components)

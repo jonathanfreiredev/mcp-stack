@@ -131,7 +131,7 @@ export function Playground() {
           {isRunning ? "Running" : run ? "Run it again" : "Run the agent"}
         </Button>
         <p className="text-muted-foreground font-mono text-xs">
-          no model is called in this mode
+          no model is called here
         </p>
       </div>
 

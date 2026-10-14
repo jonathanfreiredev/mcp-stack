@@ -26,7 +26,7 @@ export function Hero({ isSignedIn }: { isSignedIn: boolean }) {
         <div className="mt-10 max-w-3xl">
           <CommandBlock />
           <p className="text-muted-foreground mt-3 text-sm text-pretty">
-            Brings up Postgres, the API, the MCP server and the web app.
+            Brings up Postgres, the API, the MCP server and the web app. Fill in your Supabase project to sign in.
           </p>
         </div>
 

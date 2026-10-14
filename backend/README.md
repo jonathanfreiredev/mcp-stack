@@ -47,6 +47,7 @@ backend/
 │   │   ├── graph.py           # The agent loop, and the scripted decisions
 │   │   ├── tools.py           # The tools the agent carries itself
 │   │   ├── runner.py          # One run: a refusal at the door vs a fault
+│   │   ├── schemas.py         # The shapes the page reads
 │   │   └── router.py          # POST /demo/run, public on purpose
 │   ├── health/
 │   │   └── router.py          # /health liveness + /health/ready readiness
@@ -121,6 +122,7 @@ CORS_ORIGINS=http://localhost:3000
 | `LOG_LEVEL`             | No       | `INFO`                  | Minimum level for the application logs.                              |
 | `FRONTEND_URL`          | No       | `http://localhost:3000` | Base URL of the frontend, used for redirects and documentation.      |
 | `MCP_BASE_URL`          | No       | `http://localhost:8001` | Public URL of the MCP server. Published in the OAuth discovery document, so it must be the URL clients use. |
+| `MCP_INTERNAL_URL`      | No       | `http://localhost:8001` | Where the playground reaches the MCP server as a client.             |
 | `CORS_ORIGINS`          | No       | `http://localhost:3000` | Comma-separated browser origins allowed to call the API.             |
 
 Settings are defined in `app/settings.py` and loaded from `backend/.env`.
@@ -508,7 +510,8 @@ is the kind of thing that looks like a bug when it starts happening.
 ## Playground
 
 The playground is the fourth way into this domain, and the only client you can watch
-from a browser. It sits at the end of the landing, and it exists so a visitor can see
+from a browser. It sits on the landing, before the client instructions, and it exists so a visitor
+can see
 an agent reach their own data with their own account, without installing a client
 first.
 
@@ -516,15 +519,14 @@ It runs a real agent, built the way the LangGraph quickstart builds one
 (`app/demo/graph.py`): a state that carries messages, a node that decides which tool
 runs next, and a node that runs it. The loop is the library's own pieces — `ToolNode`
 runs the tools and `tools_condition` decides whether there is another round — so
-there is no hand-rolled dispatcher to keep in step with them. Both demo modes drive
-that same graph and only the decider changes. In the scripted mode the decisions are
-a list and no model is called, which the page says out loud, so nobody mistakes the
-trace for a model thinking.
+there is no hand-rolled dispatcher to keep in step with them. The decisions are a list
+and nothing calls a model, which the page says out loud, so nobody mistakes the trace
+for a model thinking.
 
 LangGraph and the MCP adapter are core dependencies, because the playground runs
-inside the API and goes out to the server on every run. The model provider is not,
-because the mode that needs one is optional. That split is the reason the dependency
-question was worth asking.
+inside the API and goes out to the server on every run. No model provider is, because
+nothing here calls a model: the decisions are a list. Whoever adds one brings their
+own, and the loop it drives is the same.
 
 The agent carries three tools. Two live in the agent's own code and need nobody's
 permission: one reads the clock, and one stops the run to ask the visitor before anything
