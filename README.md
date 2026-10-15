@@ -216,12 +216,24 @@ Deployment is not handled here: the frontend goes to Vercel (which builds it nat
 
 ## Health checks
 
-The backend exposes two unauthenticated probes for orchestrators, load balancers and uptime monitors:
+The backend exposes three unauthenticated probes for orchestrators, load balancers and uptime monitors:
 
 - `GET /health` — **liveness**: the process is running. It checks nothing external, so a failure means "restart the container".
 - `GET /health/ready` — **readiness**: pings the database with `SELECT 1` and returns `503` when it is unreachable, so traffic is routed away without restarting the process.
+- `GET /warmup` — **wake-up**: asks the MCP server whether it is up, which has the side effect of starting it. It always answers `200` with `{"api": ..., "mcp": ...}` so the page can poll it and report what is still coming.
 
 On **Render** or **Railway**, set the health check path to `/health`. Locally, `docker-compose.yml` probes `/health` and the frontend waits for the backend to be healthy.
+
+### Sleeping platforms
+
+The playground is worth having awake and worth not paying for, so the deployment this project targets is a platform that stops idle services (Railway Serverless, Cloud Run, Render) with the page waking them:
+
+- The **landing pings `/warmup` when it mounts**, through the frontend's own `/api/warmup` route. Nobody visiting the site by accident pays for it: the first visitor of an idle period starts both containers back up while they are still reading, and a tab that is hidden is not asked at all.
+- **Nothing in the browser calls the API directly.** `BACKEND_URL` stays a server-side address, which is what lets it be a container name in compose and a private hostname anywhere else.
+- The **API runs a single instance on purpose**: a run that stopped to ask a question lives in the process, so a second one would answer that the run does not exist.
+- The engine uses **`NullPool`** (`app/db/session.py`): a pool holding connections open is a trickle of traffic, and a platform that decides to sleep from traffic would never see the service go idle.
+
+The honest cost is the first visitor of an idle period. They get a notice saying the demo is waking, and their first run waits for it rather than failing.
 
 ## Environment variables
 
@@ -272,6 +284,7 @@ All endpoints live on the FastAPI backend. Protected routes expect an `Authoriza
 | ------ | -------------------------------- | :--: | ------------------------------------------------------- |
 | GET    | `/health`                        |      | Liveness: the process is up (no external checks)        |
 | GET    | `/health/ready`                  |      | Readiness: the database is reachable (`503` if not)     |
+| GET    | `/warmup`                        |      | Wake the MCP server and report what is up yet           |
 | GET    | `/v1/users/me`                   |  ✓   | Return the current profile (provisions it on first use) |
 | PATCH  | `/v1/users/me`                   |  ✓   | Update the profile name                                 |
 | DELETE | `/v1/users/me`                   |  ✓   | Delete the profile (hard delete)                        |
@@ -333,7 +346,7 @@ GitHub Actions runs two path-filtered workflows, so a change in one app does not
 - `.github/workflows/backend.yml` — lints, checks formatting, applies migrations and runs the tests against a PostgreSQL service container.
 - `.github/workflows/frontend.yml` — lints, type-checks, runs the unit tests, builds the app and runs the Playwright end-to-end tests.
 
-There are 90 backend tests, 67 frontend unit tests and 8 end-to-end tests.
+There are 93 backend tests, 76 frontend unit tests and 8 end-to-end tests.
 
 ## License
 

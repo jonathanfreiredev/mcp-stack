@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 import { CommandBlock } from "@/components/landing/command-block";
+import { WakeNotice } from "@/components/demo/wake-notice";
 
 const REPO = "https://github.com/jonathanfreiredev/mcp-stack";
 
@@ -26,7 +27,8 @@ export function Hero({ isSignedIn }: { isSignedIn: boolean }) {
         <div className="mt-10 max-w-3xl">
           <CommandBlock />
           <p className="text-muted-foreground mt-3 text-sm text-pretty">
-            Brings up Postgres, the API, the MCP server and the web app. Fill in your Supabase project to sign in.
+            Brings up Postgres, the API, the MCP server and the web app. Fill in
+            your Supabase project to sign in.
           </p>
         </div>
 
@@ -48,6 +50,11 @@ export function Hero({ isSignedIn }: { isSignedIn: boolean }) {
             {isSignedIn ? "Your profile" : "Create an account"}
           </Link>
         </div>
+
+        {/* Sits under the actions so it is read at the point the visitor decides
+            whether to try something, and takes no space at all when the demo is
+            already up. */}
+        <WakeNotice className="mt-8" />
       </div>
     </section>
   );

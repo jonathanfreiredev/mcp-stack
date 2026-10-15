@@ -118,6 +118,7 @@ dependencies = [
     { name = "cryptography" },
     { name = "fastapi", extra = ["standard"] },
     { name = "fastmcp" },
+    { name = "httpx" },
     { name = "langchain", extra = ["mcp"] },
     { name = "langgraph" },
     { name = "pyjwt" },
@@ -127,7 +128,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -139,6 +139,7 @@ requires-dist = [
     { name = "cryptography", specifier = ">=50.0.2" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.141.1" },
     { name = "fastmcp", specifier = ">=4.1.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", extras = ["mcp"], specifier = ">=1.4.5" },
     { name = "langgraph", specifier = ">=1.2.15" },
     { name = "pyjwt", specifier = ">=2.13.0" },
@@ -148,7 +149,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "ruff", specifier = ">=0.16.10" },
 ]

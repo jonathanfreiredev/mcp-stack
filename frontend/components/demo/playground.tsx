@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { CircleCheck, Clock, Lock, Play, TriangleAlert } from "lucide-react";
 
+import { WakeNotice } from "@/components/demo/wake-notice";
+import { useDemoWake } from "@/components/demo/wake-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { sleep } from "@/lib/demo-wake";
 import { cn } from "@/lib/utils";
 import { runDemoAction } from "@/server/demo/demo.actions";
 import type {
@@ -12,6 +15,18 @@ import type {
   DemoRunRequest,
   DemoToolCall,
 } from "@/server/demo/demo.schemas";
+
+/** How long to leave between two attempts while the demo's services come up. */
+const RETRY_INTERVAL_MS = 3_000;
+
+/**
+ * How long a visitor waits for the services before the page stops trying and says so.
+ *
+ * Generous, because two containers can be starting one after the other: the API has
+ * to answer before it can wake the MCP. A click that quietly resolves after a minute
+ * beats a click that has to be repeated.
+ */
+const WAIT_FOR_SERVICES_MS = 90_000;
 
 /**
  * A step's own verdict: it answered, or it did not.
@@ -92,24 +107,64 @@ function Problem({
  * page: two live in the agent's own code, and one of those stops the run to ask the
  * visitor something, while the third is the server's. An anonymous visitor gets the
  * door in their face, which is the point.
+ *
+ * The services behind it may have been asleep when the visitor arrived. Waking them
+ * is this component's job as much as the page's: a run attempts the call, waits for
+ * them to come up and attempts it again, so the wait lands on a click that was going
+ * to happen anyway.
  */
 export function Playground() {
+  const { check, note } = useDemoWake();
   const [run, setRun] = useState<DemoRun | null>(null);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [problem, setProblem] = useState<{
+    title: string;
+    detail: string;
+  } | null>(null);
   const [isRunning, startRun] = useTransition();
 
   function execute(input: DemoRunRequest = {}) {
     setProblem(null);
 
     startRun(async () => {
-      const result = await runDemoAction(input);
+      // A run can be asked for again; a decision cannot. So the first request waits
+      // for the services and repeats itself, while an answer given to a stopped run
+      // goes out once: repeating it would apply the same answer twice, and asking the
+      // visitor to answer again is the honest thing to do instead.
+      const mayWait = input.decision === undefined;
+      const deadline = Date.now() + WAIT_FOR_SERVICES_MS;
 
-      if (result?.serverError || !result?.data) {
-        setProblem(result?.serverError?.message ?? "The run did not come back.");
-        return;
+      for (;;) {
+        const result = await runDemoAction(input);
+
+        if (result?.data) {
+          setRun(result.data);
+          // Both services answered, whatever the page believed a moment ago.
+          note("ready");
+          return;
+        }
+
+        const error = result?.serverError;
+        const waking = error?.reason === "service_waking";
+
+        if (!mayWait || !waking || Date.now() > deadline) {
+          setProblem(
+            waking
+              ? {
+                  title: "The demo did not come up",
+                  detail: error?.message ?? "The API did not answer.",
+                }
+              : {
+                  title: "The run did not reach the server",
+                  detail: error?.message ?? "The run did not come back.",
+                },
+          );
+          return;
+        }
+
+        note("waking");
+        check();
+        await sleep(RETRY_INTERVAL_MS);
       }
-
-      setRun(result.data);
     });
   }
 
@@ -135,8 +190,12 @@ export function Playground() {
         </p>
       </div>
 
+      {/* Where the button is, so that whoever is about to press it knows what they
+          are waiting for. It renders nothing once the demo is up. */}
+      <WakeNotice className="mt-4" />
+
       {problem ? (
-        <Problem title="The run did not reach the server" detail={problem}>
+        <Problem title={problem.title} detail={problem.detail}>
           Nothing was executed, so nothing below reflects this attempt.
         </Problem>
       ) : null}
@@ -214,8 +273,9 @@ export function Playground() {
                   The server would not let the run in
                 </h2>
                 <p className="text-muted-foreground text-sm text-pretty">
-                  {run.refused} The tools on the server need a token, and the token
-                  comes from your account, so the door stays shut until you sign in.
+                  {run.refused} The tools on the server need a token, and the
+                  token comes from your account, so the door stays shut until
+                  you sign in.
                 </p>
                 <Link
                   href="/auth/login"
@@ -229,8 +289,8 @@ export function Playground() {
 
           {run.failed ? (
             <Problem title="A tool broke" detail={run.failed}>
-              This is not the door refusing, which is the other thing you will see
-              here: it is a tool that ran and did not finish.
+              This is not the door refusing, which is the other thing you will
+              see here: it is a tool that ran and did not finish.
             </Problem>
           ) : null}
         </div>

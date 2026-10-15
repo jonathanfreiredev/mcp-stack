@@ -46,6 +46,23 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* The sleeping robot's "z", drifting up and fading while the demo wakes. */
+  --animate-wake-z: wake-z 2.4s ease-out infinite;
+
+  @keyframes wake-z {
+    0% {
+      opacity: 0;
+      transform: translateY(1px);
+    }
+    25% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+  }
 }
 
 :root {

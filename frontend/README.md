@@ -22,15 +22,18 @@ frontend/
 │   ├── (root)/            # Public shell: home page + header layout
 │   ├── auth/              # login, signup, forgot-password, reset-password, verify-email
 │   │   └── confirm/       # Route handler for email links and the OAuth callback
+│   ├── api/
+│   │   ├── oauth/         # Route handler that records a consent decision
+│   │   └── warmup/        # Route handler the page asks to wake the demo
 │   ├── profile/           # Protected profile page
-│   ├── layout.tsx         # Root layout (fonts, metadata, Toaster)
+│   ├── layout.tsx         # Root layout (fonts, metadata, Toaster, wake-up provider)
 │   ├── error.tsx          # Route error boundary
 │   ├── not-found.tsx      # 404 page
 │   ├── loading.tsx        # Route loading UI
 │   └── globals.css        # Tailwind + theme tokens
 ├── components/
 │   ├── auth/              # Auth, profile, change-password and verification components
-│   ├── demo/              # The playground: the trace, the approval and its buttons
+│   ├── demo/              # The playground: the trace, the approval, and the wake-up
 │   ├── ui/                # shadcn/ui primitives
 │   └── ...                # Header, avatar menu, sidebar, background
 ├── server/
@@ -40,6 +43,7 @@ frontend/
 ├── lib/
 │   ├── env.js             # Validated env vars
 │   ├── auth-providers.ts  # Which login methods are enabled
+│   ├── demo-wake.ts       # The question that wakes the demo, and a wait
 │   ├── supabase/server.ts # Supabase server client (cookies)
 │   ├── supabase/admin.ts  # Supabase admin client (service role; deletes users)
 │   ├── safe-action.ts     # Public / protected action clients
@@ -47,7 +51,7 @@ frontend/
 │   └── utils.ts           # cn() helper
 ├── proxy.ts               # Refreshes the Supabase session on every request
 ├── __tests__/             # Vitest tests (unit, integration, components)
-├── vitest.config.mts      # Vitest configuration
+├── vitest.config.ts       # Vitest configuration
 ├── vitest.setup.ts        # Test setup (MSW lifecycle)
 ├── e2e/                   # Playwright end-to-end tests
 ├── playwright.config.ts   # Playwright configuration
@@ -113,6 +117,30 @@ Supabase is the source of truth: a provider only works if it is enabled in the d
 - **Protected actions** — `protectedProcedure` in `lib/safe-action.ts` requires a valid session and exposes the token and user to the action. The token is forwarded to the backend in the `Authorization` header.
 - **Account deletion** — `deleteUserAction` asks for the password again, then hard-deletes the profile through the backend and the Supabase identity through the admin client (`lib/supabase/admin.ts`, service role key). It then signs out and leaves the protected area.
 - **Guards** — `app/auth/layout.tsx` redirects authenticated users away from the auth pages, while `app/profile/page.tsx` redirects unauthenticated users to `/auth/login`. The root layout shows a resend-verification banner while the email is unverified.
+- **Waking the demo** — the backend is allowed to sleep when nobody is looking, so the page wakes it. See below.
+
+## Waking the demo
+
+A deployment that stops idle services is what keeps this project free, and it costs the
+first visitor of an idle period a wait. Waking the services early is the page's job:
+
+- `components/demo/wake-provider.tsx` sits in the root layout and asks `/api/warmup` as
+  soon as a page mounts, then every three seconds while the answer is "not yet". A hidden
+  tab is not asked at all: nobody is waiting, and asking would keep two containers awake
+  for an audience of none.
+- `app/api/warmup/route.ts` is that question. It goes through the frontend so the browser
+  never calls the API directly — `BACKEND_URL` is a server-side address, and inside
+  compose it is a container name a browser cannot resolve.
+- `components/demo/wake-notice.tsx` says "Waking the demo" under the hero, under the
+  playground's button and under the sign-in form. It renders **nothing** when the services
+  are up, which is the common case, so most visitors never learn that they can sleep.
+- The playground's run (`components/demo/playground.tsx`) retries while the answer is
+  still "not yet", so a click that arrives too early waits instead of failing. A decision
+  given to a stopped run is deliberately **not** retried: replaying an answer would apply
+  it twice.
+
+The wait is bounded. Two minutes without an answer is where the page stops saying the demo
+is waking and starts saying it is still asleep, and the run reports the failure it saw.
 
 ## OAuth consent screen
 
@@ -170,7 +198,7 @@ page into an open redirect.
 
 Tests use **Vitest** and **React Testing Library**, configured the way the
 [Next.js Vitest guide](https://nextjs.org/docs/app/guides/testing/vitest)
-recommends (see `vitest.config.mts`). They live in `__tests__/`, mirroring the
+recommends (see `vitest.config.ts`). They live in `__tests__/`, mirroring the
 source tree, and import modules through the `@/` alias.
 
 ```bash

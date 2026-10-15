@@ -10,6 +10,7 @@ dependencies = [
     "cryptography>=50.0.2",
     "fastapi[standard]>=0.141.1",
     "fastmcp>=4.1.0",
+    "httpx>=0.28.1",
     "langchain[mcp]>=1.4.5",
     "langgraph>=1.2.15",
     "pyjwt>=2.13.0",
@@ -22,7 +23,6 @@ entrypoint = "app.main:app"
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "pytest>=9.1.1",
     "ruff>=0.16.10",
 ]

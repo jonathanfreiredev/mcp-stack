@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toast";
 import { Footer } from "@/components/footer";
+import { DemoWakeProvider } from "@/components/demo/wake-provider";
 
 const geistSans = Geist({
   variable: "--font-sans",
@@ -61,9 +62,15 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-svh flex-col">
-        {children}
-        <Footer />
-        <Toaster />
+        {/* Around everything on purpose: the pages that need the demo's services are
+            the landing, the playground and the sign-in pages, and they all sit under
+            this layout. Mounting it here means one place wakes them, and one place
+            knows what they are doing. */}
+        <DemoWakeProvider>
+          {children}
+          <Footer />
+          <Toaster />
+        </DemoWakeProvider>
       </body>
     </html>
   );

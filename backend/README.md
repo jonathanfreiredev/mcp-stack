@@ -50,7 +50,7 @@ backend/
 │   │   ├── schemas.py         # The shapes the page reads
 │   │   └── router.py          # POST /demo/run, public on purpose
 │   ├── health/
-│   │   └── router.py          # /health liveness + /health/ready readiness
+│   │   └── router.py          # Liveness, readiness and the MCP warm-up
 │   ├── middleware/
 │   │   └── request_id.py      # Request id + structured access log
 │   ├── db/
@@ -151,12 +151,15 @@ Verbosity is controlled with `LOG_LEVEL` (default `INFO`).
 
 ## Health checks
 
-Two unauthenticated probes, for orchestrators, load balancers and uptime monitors:
+Two unauthenticated probes, for orchestrators, load balancers and uptime monitors, and one endpoint for the page:
 
 - `GET /health` — **liveness**: the process is running. It checks nothing external on purpose, so a failure means "restart the container".
 - `GET /health/ready` — **readiness**: runs `SELECT 1` against the database and returns `503` when it is unreachable, so traffic is routed away without restarting the process.
+- `GET /warmup` — **wake-up**: probes the MCP server's liveness, which is also what starts it when the platform has stopped it. Answers `200` with `{"api": "ok", "mcp": "ok" | "waking"}`: the caller polls it, so "not yet" is a field rather than a status code, and a cached answer would be worse than none.
 
 On **Render** or **Railway**, set the health check path to `/health`. An external monitor can point at the same path for alerts. In local development, `docker-compose.yml` probes `/health` and the frontend waits for the backend to be healthy.
+
+The page calls `/warmup` through the frontend's own `/api/warmup` route, on every visit, so a deployment that stops idle services wakes them while the visitor is still reading. See [Sleeping platforms](../README.md#sleeping-platforms) for what that costs.
 
 ## Linting and formatting
 
@@ -229,6 +232,7 @@ Protected endpoints require an `Authorization: Bearer <supabase_access_token>` h
 | ------ | -------------------------------- | :--: | ------------------------------------------------------- |
 | GET    | `/health`                        |      | Liveness: the process is up (no external checks)        |
 | GET    | `/health/ready`                  |      | Readiness: the database is reachable (`503` if not)     |
+| GET    | `/warmup`                        |      | Wake the MCP server and report what is up yet           |
 | GET    | `/v1/users/me`                   |  ✓   | Return the current profile (provisions it on first use) |
 | PATCH  | `/v1/users/me`                   |  ✓   | Update the profile name                                 |
 | DELETE | `/v1/users/me`                   |  ✓   | Delete the profile (hard delete)                        |
